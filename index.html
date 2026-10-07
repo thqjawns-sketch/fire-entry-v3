@@ -1424,10 +1424,7 @@ button:disabled{
 }
 </style>
 
-<link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#d71920">
-<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-<link rel="apple-touch-icon" href="./icon-192.png">
+<!-- V3-21: legacy V2 PWA head entries removed -->
 
 
 <style id="r16cDashboardPolish">
@@ -1615,8 +1612,8 @@ button:disabled{
 </style>
 
 
-<!-- V3-19 PWA: V2와 별도 설치되는 V3 전용 앱 -->
-<link rel="manifest" href="./manifest-v3-v20.webmanifest">
+<!-- V3-21 PWA: V2 legacy PWA 제거 + V3 단일 PWA -->
+<link rel="manifest" href="./manifest-v3-v21.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-v3-192.png">
 <link rel="apple-touch-icon" href="./icon-v3-192.png">
 <meta name="theme-color" content="#ffffff">
@@ -7968,15 +7965,7 @@ document.addEventListener("DOMContentLoaded",v249UpdateFloatNav);
 
 
 <script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", function () {
-    navigator.serviceWorker.register("./service-worker.js?v=24", {updateViaCache:"none"})
-      .then(function(reg){ return reg.update(); })
-      .catch(function (err) {
-        console.warn("Service Worker registration failed:", err);
-      });
-  });
-}
+/* V3-21: legacy V2 service-worker registration removed */
 
 /* V2.49L10: PWA/안드로이드 뒤로가기 + 첫 화면 종료 확인 */
 let v249ExitConfirmed=false;
@@ -11370,10 +11359,10 @@ function r17pRenderCurrentTeamPage(){
 </style>
 
 
-<script id="v3-19-pwa-register">
+<script id="v3-21-pwa-register">
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('./sw-v3-v20.js', {scope:'./'})
+    navigator.serviceWorker.register('./sw-v3-v21.js', {scope:'./'})
       .catch(function (err) { console.warn('V3 PWA service worker', err); });
   });
 }
