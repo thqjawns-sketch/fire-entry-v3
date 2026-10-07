@@ -1614,6 +1614,17 @@ button:disabled{
 }
 </style>
 
+
+<!-- V3-19 PWA: V2와 별도 설치되는 V3 전용 앱 -->
+<link rel="manifest" href="./manifest-v3.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-v3-192.png">
+<link rel="apple-touch-icon" href="./icon-v3-192.png">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="QR기반-진·출입 안전관리앱">
+
 </head>
 
 <body>
@@ -11357,6 +11368,16 @@ function r17pRenderCurrentTeamPage(){
   }
 }
 </style>
+
+
+<script id="v3-19-pwa-register">
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw-v3.js', {scope:'./'})
+      .catch(function (err) { console.warn('V3 PWA service worker', err); });
+  });
+}
+</script>
 
 </body>
 </html>
