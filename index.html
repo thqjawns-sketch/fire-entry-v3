@@ -439,11 +439,18 @@ button:disabled{
 .v2ChoiceGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 12px}
 .v2Choice{border:1px solid #9fb3c8;background:#fff;color:#173d67;border-radius:10px;padding:12px 5px;font-weight:bold;cursor:pointer}
 .v2Choice.active{background:#173d67;color:#fff;border-color:#173d67}
+/* V3-2 조편성 입력부 가독성 확대 */
+#teamSetupCard .teamBody > label{font-size:19px}
+#teamSetupCard #teamSelectedCount{font-size:19px}
+#teamSetupCard #teamName,
+#teamSetupCard #detailLocation{font-size:18px}
+#teamSetupCard #detailLocation::placeholder{font-size:18px}
+#teamSetupCard .v2Choice{font-size:18px}
 /* V3-1 활동층: 실제 건물 층을 - / + 로 선택 */
-.v3FloorStep{display:grid;grid-template-columns:64px minmax(120px,1fr) 64px;gap:10px;align-items:center;margin:8px 0 12px}
-.v3FloorStepBtn{height:48px;border:1px solid #9fb3c8;border-radius:10px;background:#fff;color:#173d67;font-size:25px;font-weight:900;cursor:pointer}
+.v3FloorStep{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;margin:8px 0 12px}
+.v3FloorStepBtn{height:52px;margin-top:0;padding:0;border:1px solid #9fb3c8;border-radius:10px;background:#fff;color:#173d67;font-size:25px;font-weight:900;cursor:pointer}
 .v3FloorStepBtn:active{transform:translateY(1px)}
-.v3FloorBanner{height:48px;border:1px solid #173d67;border-radius:10px;background:#173d67;color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900;letter-spacing:.2px}
+.v3FloorBanner{height:52px;border:1px solid #173d67;border-radius:10px;background:#173d67;color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900;letter-spacing:.2px}
 .v2Sub{font-size:13px;color:#53606d;margin:4px 0 8px}
 .teamPreview{padding:12px;background:#eef5fb;border-radius:10px;line-height:1.7;margin-top:10px;font-weight:bold}
 .teamError{color:#b42318;font-size:13px;margin-top:8px}
@@ -1711,13 +1718,11 @@ window.V17_STAY_POLICY=Object.freeze({
 <!-- V2 조 편성 -->
 <div class="card teamSetup" id="teamSetupCard">
 <h3>👥 조 편성 · 투입위치</h3>
-<div class="teamHint" id="teamHint">같이 진입할 대원을 선택하고 투입위치를 지정하세요.</div>
 <div class="teamBody" id="teamBody" style="display:block">
-<div class="info">안전점검이 끝난 대원 중 <b>같이 진입할 대원만 선택</b>하세요. 2명·4명 등 현장 상황에 맞게 편성할 수 있습니다.</div>
 <button type="button" class="locationEditBtn" onclick="closeTeamSetup()" style="width:100%;margin-bottom:10px">▲ 조 편성 화면 닫기</button>
 
 <label>조 명칭</label>
-<select id="teamName" disabled><option value="">대원 선택 후 자동 결정</option></select><div id="nextTeamHint" class="hint" style="margin-top:5px">같은 대원 구성은 기존 조 · 새로운 구성은 새 조로 자동 편성</div>
+<select id="teamName" disabled><option value="">대원 선택 후 자동 결정</option></select>
 
 <label>조 대원 선택 <span id="teamSelectedCount">0명</span></label>
 <div id="teamMemberList" class="teamMemberList"><div class="empty">투입대기 대원을 먼저 등록하세요.</div></div>
@@ -1737,7 +1742,7 @@ window.V17_STAY_POLICY=Object.freeze({
   <button type="button" class="v3FloorStepBtn" onclick="v3StepActivityFloor(1)" aria-label="한 층 위">＋</button>
 </div>
 
-<label>세부 위치 <span class="v2Sub">(선택)</span></label>
+<label>세부 위치</label>
 <input type="text" id="detailLocation" placeholder="예: 기계실 / 1203호 / 생산라인" oninput="updateTeamPreview()">
 
 <div id="teamPreview" class="teamPreview">조 편성 정보를 선택하세요.</div>
