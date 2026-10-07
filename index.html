@@ -9477,6 +9477,14 @@ function r17pRenderCurrentTeamPage(){
     if(site)site.textContent=dashSite?dashSite.textContent:'-';
     syncStation();
     drawTeamBoardV29();
+
+    /* V3-16: 3페이지 진입 첫 화면은 대표화면인 '층별 활동현황(전체)' */
+    try{
+      r17pShowFloorBoardSkeleton();
+    }catch(e){console.warn('V3-16 first floor board',e);}
+
+    /* 기존 자동순환은 그대로 유지:
+       층별 활동현황 → 조별 1 → 조별 2 ... → 층별 활동현황 */
     setTimeout(()=>{ if(typeof r17pStartAutoCycle==='function')r17pStartAutoCycle(); },0);
   };
 
@@ -11278,6 +11286,25 @@ function r17pRenderCurrentTeamPage(){
   font-size:clamp(18px,1.4vw,25px)!important;
   font-weight:1000!important;
   color:#173d67!important;
+}
+</style>
+
+
+<style id="v3-15-team-banner-scale">
+/* V3-15: 층별 활동현황의 활동조 배너만 약 1.5배 확대 */
+#teamBoardPageV29 .r17bTeam{
+  min-width:114px!important;
+  min-height:51px!important;
+  padding:6px 14px!important;
+  border-radius:9px!important;
+  gap:2px!important;
+}
+#teamBoardPageV29 .r17bTeamMain{gap:9px!important}
+#teamBoardPageV29 .r17bTeam b{font-size:clamp(18px,1.35vw,24px)!important}
+#teamBoardPageV29 .r17bTeam small{font-size:clamp(14px,1.02vw,18px)!important}
+#teamBoardPageV29 .r17bTeam em{
+  max-width:180px!important;
+  font-size:clamp(11px,.84vw,15px)!important;
 }
 </style>
 
