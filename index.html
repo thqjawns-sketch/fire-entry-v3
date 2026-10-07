@@ -1581,6 +1581,39 @@ button:disabled{
 #dashboardDetailOverlay .v3EditFloorBanner{display:flex;align-items:center;justify-content:center;background:#173d67;color:#fff;border:1px solid #173d67}
 </style>
 
+
+<style id="v3TeamOnlyAndFloorAlign">
+/* V3-5: 투입방식은 조 편성 후 투입으로 단일화 */
+.entryModeGrid.v3TeamOnlyMode{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+}
+.entryModeGrid.v3TeamOnlyMode .entryModeBtn{
+  width:100%!important;
+}
+
+/* 조/대원 정보변경 활동층: - / 층 / + 동일 3등분·동일 높이 */
+#dashboardDetailOverlay .v3EditFloorStep{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important;
+  gap:10px!important;
+  align-items:stretch!important;
+}
+#dashboardDetailOverlay .v3EditFloorBtn,
+#dashboardDetailOverlay .v3EditFloorBanner{
+  width:100%!important;
+  min-width:0!important;
+  height:52px!important;
+  min-height:52px!important;
+  max-height:52px!important;
+  margin:0!important;
+  padding:0 8px!important;
+  box-sizing:border-box!important;
+  line-height:1!important;
+  align-self:stretch!important;
+}
+</style>
+
 </head>
 
 <body>
@@ -1766,10 +1799,7 @@ window.V17_STAY_POLICY=Object.freeze({
 개인안전점검 대기
 </div>
 <div class="entryModeBox">
-  <div class="entryModeGrid">
-    <button type="button" id="quickEntryButton" class="entryModeBtn fast" onclick="quickEntryMembers()" disabled>
-      ⚡ 즉시 투입
-    </button>
+  <div class="entryModeGrid v3TeamOnlyMode">
     <button type="button" id="teamModeButton" class="entryModeBtn team" onclick="openTeamSetup()" disabled>
       👥 조 편성 후 투입
     </button>
@@ -3948,11 +3978,9 @@ function isPPEComplete(){
 }
 function updateTeamSetupState(){
   const ready=entryQueue.length>0 && isPPEComplete();
-  const quick=document.getElementById("quickEntryButton");
   const team=document.getElementById("teamModeButton");
   const card=document.getElementById("teamSetupCard");
 
-  if(quick) quick.disabled=!ready;
   if(team) team.disabled=!ready;
 
   if(!ready && card){
@@ -4969,42 +4997,6 @@ function resetPPE(){
 일괄 진입
 ===================================================== */
 
-
-async function quickEntryMembers(){
-  if(entrySubmitting)return;
-  const site=(document.getElementById("site")||{}).value||"";
-  const officer=((document.getElementById("officer")||{}).value||"").trim();
-  if(!site){alert("화재현장을 선택하세요.");return;}
-  if(!officer){alert("지휘관 또는 안전점검관 성명을 입력하세요.");return;}
-  if(entryQueue.length===0){alert("투입대기 명단에 대원을 추가하세요.");return;}
-  if(!isPPEComplete()){alert("개인안전점검 3개 항목을 모두 확인하세요.");return;}
-  if(!confirm("개인안전점검 완료 대원 "+entryQueue.length+"명을 조·위치정보 없이 즉시 투입하시겠습니까?"))return;
-
-  rememberOfficerRecent3(officer);
-  entrySubmitting=true;
-  const qbtn=document.getElementById("quickEntryButton");
-  if(qbtn){qbtn.disabled=true;qbtn.innerText="⏳ 투입 처리중...";}
-  const members=[...entryQueue];
-  const form=new URLSearchParams();
-  form.append("action","batchEntry"); form.append("site",site); form.append("officer",officer);
-  form.append("teamName",""); form.append("entryDirection",""); form.append("activityFloor",""); form.append("detailLocation","");
-  form.append("members",JSON.stringify(members.map(m=>({id:m.id,name:m.name}))));
-  try{
-    const response=await fetch(API,{method:"POST",body:form});
-    const data=await response.json();
-    alert(data.message||"처리 완료");
-    if(data.successCount>0){
-      const successIds=new Set((data.succeeded||[]).map(x=>String(x.id)));
-      members.forEach(m=>{if(successIds.size===0||successIds.has(String(m.id)))v23SetMemberMeta(m.id,{teamName:"",entryDirection:"",activityFloor:"",detailLocation:"",history:[]});});
-      entryQueue=entryQueue.filter(m=>!successIds.has(String(m.id)));
-      renderQueue();
-      if(entryQueue.length===0) resetPPE(); else { checkPPE(); renderTeamMembers(); }
-      /* R12: 투입 처리 플래그가 해제된 직후 현재 현장 내부만 1회 자동 갱신 */
-      setTimeout(()=>{ void loadInsideMembers(true); if(typeof loadDashboard==='function')void loadDashboard(true); },0);
-    }
-  }catch(e){console.error(e);alert("즉시 투입 기록 오류");}
-  finally{entrySubmitting=false;if(qbtn){qbtn.innerText="⚡ 즉시 투입";qbtn.disabled=!(entryQueue.length>0&&isPPEComplete());} updateTeamSetupState();}
-}
 
 async function batchEntryMembers(){
   const v249L29ClientStarted=performance.now();
@@ -8450,7 +8442,7 @@ window.v251R9OpenTeam=function(team){
   const curDir=first.direction||'', curFloor=first.floor||'', curDetail=first.detail||'';
   const dirHtml=curDir?directionOptions(curDir):'<option value="" selected>현재값 유지</option>'+directionOptions('');
   const floorStart=v3EditFloorNormalize(curFloor);
-  o.innerHTML='<div class="dashboardDetailSheet"><div class="sheetHeader"><b>🛡️ '+esc(team)+' · 조 정보변경</b><div class="r17eHeaderActions"><button type="button" id="r9TeamIsolationBtn" class="r17eIsolationBtn '+(iso===ms.length?'isIsolated':'')+'">'+(iso===ms.length?'✓ 조 고립 해제':'🚨 조 고립 지정')+'</button><button type="button" id="r9Close" class="sheetClose">×</button></div></div><div class="v251R9State">현재 고립 '+iso+'명 · 조 전체 '+ms.length+'명</div><div class="locationEditForm"><label>방면<select id="r9Dir">'+dirHtml+'</select></label><label>활동층</label>'+v3EditFloorHtml('r9Floor',floorStart)+'<label>세부장소<input id="r9Detail" value="'+attr(curDetail)+'" placeholder="예: 기계실 / 1203호 / 계단실"></label></div><div class="v251R9Note">현재 위치를 불러오지 못한 항목은 변경하지 않고 기존 값을 유지합니다.</div><button type="button" id="r9Save" class="sheetSave">조 정보변경 반영</button></div>';
+  o.innerHTML='<div class="dashboardDetailSheet"><div class="sheetHeader"><b>🛡️ '+esc(team)+' · 조 정보변경</b><div class="r17eHeaderActions"><button type="button" id="r9TeamIsolationBtn" class="r17eIsolationBtn '+(iso===ms.length?'isIsolated':'')+'">'+(iso===ms.length?'✓ 조 고립 해제':'🚨 조 고립 지정')+'</button><button type="button" id="r9Close" class="sheetClose">×</button></div></div><div class="v251R9State">현재 고립 '+iso+'명 · 조 전체 '+ms.length+'명</div><div class="locationEditForm"><label>방면<select id="r9Dir">'+dirHtml+'</select></label><label>활동층</label>'+v3EditFloorHtml('r9Floor',floorStart)+'<label>세부장소<input id="r9Detail" value="'+attr(curDetail)+'" placeholder="예: 기계실 / 1203호 / 계단실"></label></div><button type="button" id="r9Save" class="sheetSave">조 정보변경 반영</button></div>';
   o.classList.add('show');
   v3BindEditFloor(o);
   document.getElementById('r9Close').onclick=()=>o.classList.remove('show');
