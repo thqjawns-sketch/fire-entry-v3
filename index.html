@@ -9091,13 +9091,22 @@ function r17pRenderCurrentTeamPage(){
     if(root&&root.classList.contains('r17pFloorMode'))r17fRenderFloorOnlyBoard();
   };
 
+/* V3-7: 실제 활동층 매칭 오류 수정 - 옛 전술층 v29FloorKey 의존 제거 */
   let r17fSelectedFloor='전체';
   let R17F_FLOORS=[]; /* V3-6: 현재 실제 활동층으로 매 렌더링 시 재구성 */
 
+  function r17fPhysicalFloorKey(value){
+    const v=String(value||'').trim();
+    if(!v||v==='미지정'||v==='위치 분산')return '';
+    return v3PhysicalFloorValue(v)!=null?v:'';
+  }
+
   function r17fFloorTeams(teams,floor){
+    const target=r17fPhysicalFloorKey(floor);
+    if(!target)return [];
     return (Array.isArray(teams)?teams:[]).filter(t=>{
       if(t&&t.dispersed)return false;
-      return (typeof v29FloorKey==='function'?v29FloorKey(t.floor):String(t.floor||''))===floor;
+      return r17fPhysicalFloorKey(t&&t.floor)===target;
     });
   }
 
@@ -9219,7 +9228,7 @@ function r17pRenderCurrentTeamPage(){
     center.innerHTML='<div class="r17fActivityTitle">층별현황</div>';
 
     const selected=(r17fSelectedFloor==='전체')
-      ? R17F_FLOORS.flatMap(f=>r17fFloorTeams(teams,f))
+      ? teams
       : r17fFloorTeams(teams,r17fSelectedFloor);
 
     if(selected.length){
@@ -9234,7 +9243,7 @@ function r17pRenderCurrentTeamPage(){
         const people=members.map(memberLine).filter(Boolean);
         const entryTimes=members.map(entryTextOf).filter(x=>x&&x!=='-');
         const entryText=entryTimes.length ? entryTimes[0] : '-';
-        const floorKey=(typeof v29FloorKey==='function'?v29FloorKey(t.floor):String(t.floor||''));
+        const floorKey=r17fPhysicalFloorKey(t.floor)||String(t.floor||'미지정').trim()||'미지정';
 
         return '<div class="r17fActivityTeamCard">'+
           '<div class="r17fActivityTeamTop">'+
