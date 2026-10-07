@@ -8991,8 +8991,7 @@ window.v29UpdateRefreshClock=function(){
     if(ov){
       const total=teams.reduce((a,t)=>a+t.count,0);
       ov.innerHTML='<div class="r17pOverviewBox"><span>활동조</span><b>'+teams.length+'개 조</b></div>'+
-        '<div class="r17pOverviewBox"><span>총 조원</span><b>'+total+'명</b></div>'+
-        '<div class="r17pOverviewBox"><span>현재 활동요약</span><span class="r17pOverviewText">'+E(v29BuildActivitySummary(teams))+'</span></div>';
+        '<div class="r17pOverviewBox"><span>총 조원</span><b>'+total+'명</b></div>';
     }
     const alert=document.getElementById('cmdAlertBar');
     if(alert){
@@ -11335,6 +11334,28 @@ function r17pRenderCurrentTeamPage(){
 #teamBoardPageV29 .r17fSummaryMetric{display:inline-flex!important;align-items:center!important;gap:8px!important}
 #teamBoardPageV29 .r17fSummaryMetric small{font-size:clamp(13px,.9vw,17px)!important;font-weight:900!important;color:#526b83!important}
 #teamBoardPageV29 .r17fSummaryMetric strong{font-size:clamp(20px,1.45vw,28px)!important;font-weight:1000!important;color:#123f70!important;letter-spacing:-.04em!important}
+</style>
+
+
+<style id="v3-18-tablet-horizontal-pan">
+/* 태블릿: 모니터용 정보/크기를 유지하고 화면 자체를 좌우로 이동 */
+@media (max-width:1180px){
+  html,body{
+    overflow-x:auto!important;
+    overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  #teamBoardPageV29{
+    width:1440px!important;
+    min-width:1440px!important;
+    max-width:none!important;
+    overflow:visible!important;
+  }
+  #teamBoardPageV29,
+  #teamBoardPageV29 *{
+    touch-action:pan-x pan-y;
+  }
+}
 </style>
 
 </body>
