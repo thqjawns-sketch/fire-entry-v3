@@ -8690,7 +8690,7 @@ function v3SortPhysicalFloors(a,b){
   const av=v3PhysicalFloorValue(a), bv=v3PhysicalFloorValue(b);
   if(av==null&&bv==null)return String(a).localeCompare(String(b),'ko');
   if(av==null)return 1;if(bv==null)return -1;
-  return av-bv; /* 건물 아래층 → 위층 */
+  return bv-av; /* 화면 위→아래: 높은 층 → 1층 → B1 → B2 */
 }
 function v3ActivePhysicalFloors(teams){
   const set=new Set();
@@ -8757,6 +8757,8 @@ function v3OpenTacticalFloorDialog(floor){
 .v3TacCancel{border:1px solid #d7e0e8;background:#fff;color:#40566b}.v3TacApply{border:1px solid #173d67;background:#173d67;color:#fff}
 #teamBoardPageV29 .r17fTacticalMini{display:inline-flex;margin-left:5px;padding:2px 6px;border-radius:999px;background:#eaf2ff;color:#174f89;border:1px solid #a9c5ea;font-size:clamp(9px,.64vw,12px);font-weight:950;white-space:nowrap}
 #teamBoardPageV29 .r17fTacticalMini.fire{background:#fff0f0;color:#c51f1f;border-color:#ef8c8c}
+#teamBoardPageV29 .r17fTacticalAction{cursor:pointer;user-select:none}
+#teamBoardPageV29 .r17fTacticalAction:focus{outline:2px solid #1677ff;outline-offset:1px}
 </style>
 
 <script id="r17r-command-shared-helpers">
@@ -9209,7 +9211,11 @@ function r17pRenderCurrentTeamPage(){
         const here=r17fFloorTeams(teams,f);
         const tactical=v3TacticalForFloor(f);
         return '<button type="button" class="r17fFloorBtn '+(f===r17fSelectedFloor?'active ':'')+(tactical==='화점층'?'fire':'')+'" data-r17-floor="'+E(f)+'">'+
-          '<div class="r17fFloorHead"><span class="r17fFloorName">'+E(f)+(tactical?'<span class="r17fTacticalMini '+(tactical==='화점층'?'fire':'')+'">'+(tactical==='화점층'?'🔥 ':'')+E(tactical)+'</span>':'')+'</span><strong>'+here.length+'개조</strong></div>'+
+          '<div class="r17fFloorHead"><span class="r17fFloorName">'+E(f)+
+            '<span role="button" tabindex="0" class="r17fTacticalMini r17fTacticalAction '+(tactical==='화점층'?'fire':'')+'" data-v3-tactical-floor="'+E(f)+'">'+
+              (tactical?(tactical==='화점층'?'🔥 ':'')+E(tactical):'전술층 반영')+
+            '</span>'+
+          '</span><strong>'+here.length+'개조</strong></div>'+
           (here.length?'<div class="r17fFloorTeams">'+here.map(t=>
             '<span class="r17fTeamBadge '+v29TeamCss(t.team)+'">'+E(t.team)+'</span>'
           ).join('')+'</div>':'')+
@@ -9220,8 +9226,19 @@ function r17pRenderCurrentTeamPage(){
       e.preventDefault();e.stopPropagation();
       const f=this.dataset.r17Floor||'전체';
       r17fSelectFloor(f);
-      if(f!=='전체')setTimeout(()=>v3OpenTacticalFloorDialog(f),0);
     }));
+
+    floorPanel.querySelectorAll('.r17fTacticalAction').forEach(el=>{
+      const openTactical=function(e){
+        e.preventDefault();e.stopPropagation();
+        const f=el.dataset.v3TacticalFloor||'';
+        if(f)setTimeout(()=>v3OpenTacticalFloorDialog(f),0);
+      };
+      el.addEventListener('click',openTactical);
+      el.addEventListener('keydown',function(e){
+        if(e.key==='Enter'||e.key===' '){openTactical(e);}
+      });
+    });
 
     /* 2번: 층별현황 — 전체면 모든 활동조, 개별층이면 해당층만 */
     center.style.display='block';
