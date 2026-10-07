@@ -8700,6 +8700,26 @@ function v3ActivePhysicalFloors(teams){
   });
   return [...set].sort(v3SortPhysicalFloors);
 }
+function v3FloorLabelFromValue(n){return n<0?'B'+Math.abs(n):n+'층';}
+function v3BuildingDisplayFloors(activeFloors,maxSlots=7){
+  const vals=[...new Set((activeFloors||[]).map(v3PhysicalFloorValue).filter(v=>v!=null))].sort((a,b)=>b-a);
+  if(!vals.length)return [];
+  const hi=vals[0],lo=vals[vals.length-1];
+  const range=[];
+  for(let n=hi;n>=lo;n--){if(n!==0)range.push(n);}
+  if(range.length<=maxSlots)return range.map(v3FloorLabelFromValue);
+
+  // 활동층은 반드시 보존. 남는 칸은 최저/최고와 활동층 주변을 우선 표시.
+  const chosen=new Set(vals);
+  chosen.add(hi);chosen.add(lo);
+  const candidates=range.filter(v=>!chosen.has(v)).sort((a,b)=>{
+    const da=Math.min(...vals.map(x=>Math.abs(x-a)));
+    const db=Math.min(...vals.map(x=>Math.abs(x-b)));
+    return da-db || b-a;
+  });
+  for(const v of candidates){if(chosen.size>=maxSlots)break;chosen.add(v);}
+  return [...chosen].sort((a,b)=>b-a).map(v3FloorLabelFromValue);
+}
 function v3RefreshAfterTacticalChange(){
   try{
     if(typeof drawDashboardInside==='function')drawDashboardInside(window.__dashboardInsideMembers||[]);
@@ -9287,21 +9307,26 @@ function r17pRenderCurrentTeamPage(){
       center.innerHTML+='<div class="r17fEmpty">현재 활동 중인 조가 없습니다.</div>';
     }
 
-    /* 3번: 기존 고정 2D 건물 유지 + 같은 실제 데이터에서 층별 안전경고만 추가 */
+    /* 3번: V3-12 동적 3D 층별 활동현황
+       왼쪽 실제층 / 가운데 조 활동 / 오른쪽 전술층.
+       활동 최저~최고 사이층을 자동 구성하고 화면은 최대 7단으로 유지. */
     right.style.display='block';
 
     const floorColor={
       '옥상':'#7c3aed','상층':'#0891b2','직상층':'#1677ff','화점층':'#ef2020',
-      '직하층':'#0f9588','상층':'#0891b2','하층':'#f2b705','지하층':'#475569'
+      '직하층':'#0f9588','하층':'#f2b705','지하층':'#475569'
     };
+    const displayFloors=v3BuildingDisplayFloors(R17F_FLOORS,7);
+    const slotCount=Math.max(1,displayFloors.length);
 
-    const buildingFloors=R17F_FLOORS.map((f,idx)=>{
+    const buildingFloors=displayFloors.map((f,idx)=>{
       const here=r17fFloorTeams(teams,f);
       const tactical=v3TacticalForFloor(f);
       const teamHtml=here.map(t=>{
         const detText=detail(t.detail);
         const showDetail=(!detText||detText==='미지정'||/세부\s*장소\s*미지정/i.test(detText))?'-':detText;
-        return '<span class="r17bTeam '+v29TeamCss(t.team)+'">'+E(t.team)+' : '+E(showDetail)+'</span>';
+        const cnt=(t.members||[]).length;
+        return '<span class="r17bTeam '+v29TeamCss(t.team)+'"><b>'+E(t.team)+'</b><small>'+cnt+'명'+(showDetail!=='-'?' · '+E(showDetail):'')+'</small></span>';
       }).join('');
 
       const floorMembers=here.flatMap(t=>t.members||[]);
@@ -9313,8 +9338,11 @@ function r17pRenderCurrentTeamPage(){
             (safety.length?'<span class="safe">⚠ 안전확인 '+safety.length+'</span>':'')+
           '</div>'
         : '';
+      const tacticalHtml=tactical
+        ? '<div class="r17bTacticalLabel '+(tactical==='화점층'?'fire':'')+'">'+(tactical==='화점층'?'🔥 ':'')+E(tactical)+'</div>'
+        : '<div class="r17bTacticalLabel empty">-</div>';
 
-      return '<div class="r17bFloor '+(tactical==='화점층'?'fire':'')+'" style="--fc:'+floorColor[tactical]||'#64748b'+';--fi:'+idx+'">'+
+      return '<div class="r17bFloor '+(tactical==='화점층'?'fire':'')+'" style="--fc:'+(floorColor[tactical]||'#64748b')+';--fi:'+idx+';--slots:'+slotCount+'">'+
         '<div class="r17bBackTop"></div>'+
         '<div class="r17bBackLeft"></div>'+
         '<div class="r17bBackRight"></div>'+
@@ -9326,12 +9354,13 @@ function r17pRenderCurrentTeamPage(){
         '<div class="r17bFloorLine"></div>'+
         '<div class="r17bFloorLabel">'+E(f)+'</div>'+
         '<div class="r17bTeamRows">'+teamHtml+'</div>'+
-        alertHtml+
+        tacticalHtml+alertHtml+
       '</div>';
     }).join('');
 
     right.innerHTML=
       '<div class="r17bTitle">층별 활동현황</div>'+
+      '<div class="r17bLegend"><span>실제층</span><span>활동조</span><span>전술층</span></div>'+
       '<div class="r17bViewport"><div class="r17bBuilding">'+buildingFloors+'</div></div>';
 
     if(selectedSummary)selectedSummary.textContent='';
@@ -11010,5 +11039,70 @@ function r17pRenderCurrentTeamPage(){
 }
 
 </style>
+
+<style id="v3-12-dynamic-building">
+/* V3-12 층별 활동현황: 화면용 경량 3D 단면 */
+#teamBoardPageV29 .r17bLegend{
+  height:24px;display:grid;grid-template-columns:22% 56% 22%;align-items:center;
+  color:#61758d;font-size:10px;font-weight:950;text-align:center;border-bottom:1px solid #edf1f5;
+}
+#teamBoardPageV29 .r17bViewport{height:calc(100% - 54px)!important;padding:8px 4px 10px!important;overflow:hidden!important}
+#teamBoardPageV29 .r17bBuilding{
+  left:50%!important;top:50%!important;width:82%!important;height:94%!important;max-height:none!important;
+  aspect-ratio:auto!important;transform:translate(-50%,-50%)!important;
+}
+#teamBoardPageV29 .r17bFloor{
+  left:10%!important;
+  top:calc(var(--fi) * (100% / var(--slots)))!important;
+  width:78%!important;
+  height:calc(94% / var(--slots))!important;
+  min-height:42px;
+}
+#teamBoardPageV29 .r17bFront{
+  background:linear-gradient(180deg,rgba(235,244,252,.28),rgba(213,229,243,.12))!important;
+  border-color:#71879d!important;border-radius:2px;
+}
+#teamBoardPageV29 .r17bFloor.fire .r17bFront{
+  background:linear-gradient(90deg,rgba(239,32,32,.22),rgba(239,32,32,.38),rgba(239,32,32,.22))!important;
+  border:2px solid #ef2020!important;
+  box-shadow:inset 0 0 18px rgba(239,32,32,.15),0 0 9px rgba(239,32,32,.18);
+}
+#teamBoardPageV29 .r17bFloor.fire .r17bDepthTop,
+#teamBoardPageV29 .r17bFloor.fire .r17bBackTop,
+#teamBoardPageV29 .r17bFloor.fire .r17bBackLeft,
+#teamBoardPageV29 .r17bFloor.fire .r17bBackRight,
+#teamBoardPageV29 .r17bFloor.fire .r17bLeftDepth,
+#teamBoardPageV29 .r17bFloor.fire .r17bRightBottomDepth,
+#teamBoardPageV29 .r17bFloor.fire .r17bRightBackWall{background:#ef2020!important}
+#teamBoardPageV29 .r17bFloorLabel{
+  right:calc(100% + 4%)!important;top:61%!important;min-width:48px!important;height:27px!important;
+  padding:0 6px!important;font-size:clamp(11px,.82vw,15px)!important;
+}
+#teamBoardPageV29 .r17bFloorLabel:after{width:22px!important}
+#teamBoardPageV29 .r17bTeamRows{
+  left:5%!important;top:94%!important;width:80%!important;max-height:calc(100% - 10px)!important;
+  gap:3px 5px!important;overflow:hidden!important;
+}
+#teamBoardPageV29 .r17bTeam{
+  height:28px!important;padding:0 7px!important;gap:5px!important;
+  background:rgba(255,255,255,.96)!important;
+}
+#teamBoardPageV29 .r17bTeam b{font-size:clamp(10px,.78vw,14px);font-weight:950}
+#teamBoardPageV29 .r17bTeam small{font-size:clamp(8px,.58vw,10px);font-weight:900;color:#49647d}
+#teamBoardPageV29 .r17bTacticalLabel{
+  position:absolute;left:calc(100% + 17%);top:61%;transform:translateY(-50%);
+  min-width:66px;height:29px;padding:0 8px;border:2px solid var(--fc);border-radius:7px;
+  background:#fff;color:#173d67;display:flex;align-items:center;justify-content:center;
+  font-size:clamp(10px,.72vw,13px);font-weight:950;white-space:nowrap;z-index:15;
+}
+#teamBoardPageV29 .r17bTacticalLabel:before{
+  content:"";position:absolute;right:100%;top:50%;width:24px;height:2px;background:var(--fc);transform:translateY(-50%);
+}
+#teamBoardPageV29 .r17bTacticalLabel.fire{background:#fff1f1;color:#c81e1e;border-color:#ef2020}
+#teamBoardPageV29 .r17bTacticalLabel.empty{border-color:#d8e1ea;color:#9aabbc;background:#f8fafc}
+#teamBoardPageV29 .r17bTacticalLabel.empty:before{background:#d8e1ea}
+#teamBoardPageV29 .r17bFloorAlert{right:4%!important;top:27%!important;transform:none!important}
+</style>
+
 </body>
 </html>
