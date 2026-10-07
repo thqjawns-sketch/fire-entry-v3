@@ -9326,7 +9326,7 @@ function r17pRenderCurrentTeamPage(){
         const detText=detail(t.detail);
         const showDetail=(!detText||detText==='미지정'||/세부\s*장소\s*미지정/i.test(detText))?'-':detText;
         const cnt=(t.members||[]).length;
-        return '<span class="r17bTeam '+v29TeamCss(t.team)+'"><b>'+E(t.team)+'</b><small>'+cnt+'명'+(showDetail!=='-'?' · '+E(showDetail):'')+'</small></span>';
+        return '<span class="r17bTeam '+v29TeamCss(t.team)+'"><span class="r17bTeamMain"><b>'+E(t.team)+'</b><small>'+cnt+'명</small></span>'+(showDetail!=='-'?'<em>'+E(showDetail)+'</em>':'')+'</span>';
       }).join('');
 
       const floorMembers=here.flatMap(t=>t.members||[]);
@@ -11174,6 +11174,110 @@ function r17pRenderCurrentTeamPage(){
 #teamBoardPageV29 .r17bLeftDepth,#teamBoardPageV29 .r17bRightBottomDepth,#teamBoardPageV29 .r17bRightBackWall{opacity:.82}
 #teamBoardPageV29 .r17fSelectedSummary{
   font-size:clamp(17px,1.35vw,24px)!important;font-weight:1000!important;color:#173d67!important;
+}
+</style>
+
+
+<style id="v3-14-building-polish">
+/* V3-14 - 지휘관이 한눈에 읽는 층별 활동현황 */
+#teamBoardPageV29 .r17bTitle{
+  font-size:clamp(16px,1.2vw,22px)!important;
+  font-weight:1000!important;
+}
+#teamBoardPageV29 .r17bLegend{
+  grid-template-columns:17% 66% 17%!important;
+  height:34px!important;
+  font-size:clamp(14px,1.05vw,19px)!important;
+  letter-spacing:.01em;
+}
+#teamBoardPageV29 .r17bViewport{
+  height:calc(100% - 64px)!important;
+  padding:6px 0 9px!important;
+}
+#teamBoardPageV29 .r17bBuilding{
+  width:62%!important; /* 과도하게 긴 건물 폭 축소 */
+  height:94%!important;
+}
+#teamBoardPageV29 .r17bFloor{
+  left:8%!important;
+  width:84%!important;
+}
+#teamBoardPageV29 .r17bFront{
+  background:linear-gradient(180deg,rgba(253,254,255,.97),rgba(229,238,247,.74))!important;
+  border-color:#66819b!important;
+}
+#teamBoardPageV29 .r17bDepthTop{
+  background:linear-gradient(135deg,#f7fafc,#dce7f1)!important;
+  opacity:.96!important;
+}
+#teamBoardPageV29 .r17bRightBottomDepth,
+#teamBoardPageV29 .r17bRightBackWall{
+  background:linear-gradient(180deg,#eaf1f7,#d1deea)!important;
+  opacity:.92!important;
+}
+#teamBoardPageV29 .r17bLeftDepth{
+  background:#dbe6f0!important;opacity:.92!important;
+}
+
+/* 화점층 = 전술적 위험: 연한 빨강 면 + 선명한 빨강 외곽 */
+#teamBoardPageV29 .r17bFloor.fire .r17bFront{
+  background:linear-gradient(90deg,rgba(255,244,244,.88),rgba(239,32,32,.18),rgba(255,239,239,.88))!important;
+  border:2px solid #ef3030!important;
+  box-shadow:inset 0 0 14px rgba(239,32,32,.08),0 0 5px rgba(239,32,32,.12)!important;
+}
+/* 선택층 = 파랑. 화점층이어도 파란 선택선이 최우선 */
+#teamBoardPageV29 .r17bFloor.selected .r17bFront,
+#teamBoardPageV29 .r17bFloor.fire.selected .r17bFront{
+  box-shadow:inset 0 0 0 3px #1769ff,0 0 0 2px rgba(23,105,255,.13)!important;
+}
+
+/* 실제층/전술층을 건물에 밀착 */
+#teamBoardPageV29 .r17bFloorLabel{
+  right:calc(100% + 1%)!important;
+  min-width:62px!important;height:33px!important;
+  font-size:clamp(14px,1.02vw,19px)!important;
+}
+#teamBoardPageV29 .r17bFloorLabel:after{width:13px!important}
+#teamBoardPageV29 .r17bTacticalLabel{
+  left:calc(100% + 4%)!important;
+  min-width:88px!important;height:34px!important;
+  font-size:clamp(13px,.96vw,17px)!important;
+}
+#teamBoardPageV29 .r17bTacticalLabel:before{width:14px!important}
+
+/* 활동조를 층 중앙에 크고 또렷하게 */
+#teamBoardPageV29 .r17bTeamRows{
+  left:50%!important;top:52%!important;width:82%!important;
+  transform:translate(-50%,-50%)!important;
+  justify-content:center!important;align-items:center!important;align-content:center!important;
+  gap:5px 7px!important;
+}
+#teamBoardPageV29 .r17bTeam{
+  min-width:76px!important;height:auto!important;min-height:34px!important;
+  padding:4px 9px!important;display:flex!important;flex-direction:column!important;
+  align-items:center!important;justify-content:center!important;gap:1px!important;
+  border-width:1.5px!important;border-radius:7px!important;
+  background:rgba(255,255,255,.97)!important;
+}
+#teamBoardPageV29 .r17bTeamMain{display:flex;align-items:center;justify-content:center;gap:6px;line-height:1}
+#teamBoardPageV29 .r17bTeam b{font-size:clamp(13px,.96vw,17px)!important}
+#teamBoardPageV29 .r17bTeam small{font-size:clamp(10px,.73vw,13px)!important}
+#teamBoardPageV29 .r17bTeam em{
+  display:block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-style:normal;font-size:clamp(8px,.6vw,11px);font-weight:900;color:#536a80;line-height:1.1;
+}
+
+/* 층 선택 가능성은 과하지 않게 */
+#teamBoardPageV29 .r17bFloor:hover .r17bFront{filter:brightness(.985)}
+#teamBoardPageV29 .r17bFloor:focus{outline:none}
+#teamBoardPageV29 .r17bFloor:focus .r17bFront{box-shadow:inset 0 0 0 3px #1769ff!important}
+
+/* 선택 현황 제목 */
+#teamBoardPageV29 .r17fSelectedSummary{
+  min-height:30px!important;
+  font-size:clamp(18px,1.4vw,25px)!important;
+  font-weight:1000!important;
+  color:#173d67!important;
 }
 </style>
 
