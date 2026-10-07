@@ -7193,7 +7193,7 @@ function v16NMemberCardHtml(member){
     '<div class="insideCompactLocation">'+
       '<span class="insideLocText">'+escapeHtml(team)+' · '+activityNo+'차 · '+escapeHtml(dir)+' / </span>'+
       '<span class="floorMini '+v23FloorClass(floor)+'">'+escapeHtml(floor)+'</span>'+
-      '<span class="insideLocText"> / '+escapeHtml(detail)+'</span>'+
+      '<span class="insideLocText"> / '+escapeHtml(detail)+'</span>'+v3TacticalBadgeHtml(floor)+
     '</div>'+
     '<div class="insideCompactBottom v251R16EStatusRow">'+
       '<span class="v251EntryInfo">진입 '+escapeHtml(member.entryTime)+' · '+Number(member.entryCount)+'회차</span>'+
@@ -8654,6 +8654,111 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(refresh,0));setInter
 
 
 
+
+<script id="v3-tactical-floor-core">
+/* V3-6: 실제 활동층별 전술층 상태 */
+function v3TacticalSiteKey(){
+  const site=(document.getElementById('dashboardSiteName')?.textContent||'').trim()||'default';
+  return 'V3_TACTICAL_FLOORS::'+site;
+}
+function v3LoadTacticalFloors(){
+  try{return JSON.parse(localStorage.getItem(v3TacticalSiteKey())||'{}')||{};}catch(e){return {};}
+}
+function v3SaveTacticalFloors(map){
+  try{localStorage.setItem(v3TacticalSiteKey(),JSON.stringify(map||{}));}catch(e){}
+}
+function v3TacticalForFloor(floor){
+  const f=String(floor||'').trim();
+  if(!f||f==='미지정')return '';
+  return String(v3LoadTacticalFloors()[f]||'').trim();
+}
+function v3TacticalBadgeHtml(floor){
+  const t=v3TacticalForFloor(floor);
+  if(!t)return '';
+  const fire=t==='화점층';
+  return '<span class="v3TacticalBadge '+(fire?'fire':'')+'">'+(fire?'🔥 ':'')+escapeHtml(t)+'</span>';
+}
+function v3PhysicalFloorValue(v){
+  v=String(v||'').trim();
+  let m=v.match(/^B(\d+)$/i);
+  if(m)return -Number(m[1]);
+  m=v.match(/^(\d+)층$/);
+  if(m)return Number(m[1]);
+  return null;
+}
+function v3SortPhysicalFloors(a,b){
+  const av=v3PhysicalFloorValue(a), bv=v3PhysicalFloorValue(b);
+  if(av==null&&bv==null)return String(a).localeCompare(String(b),'ko');
+  if(av==null)return 1;if(bv==null)return -1;
+  return av-bv; /* 건물 아래층 → 위층 */
+}
+function v3ActivePhysicalFloors(teams){
+  const set=new Set();
+  (teams||[]).forEach(t=>{
+    const f=String(t?.floor||'').trim();
+    if(f && f!=='미지정' && f!=='위치 분산' && v3PhysicalFloorValue(f)!=null)set.add(f);
+  });
+  return [...set].sort(v3SortPhysicalFloors);
+}
+function v3RefreshAfterTacticalChange(){
+  try{
+    if(typeof drawDashboardInside==='function')drawDashboardInside(window.__dashboardInsideMembers||[]);
+  }catch(e){}
+  try{
+    if(typeof drawTeamBoardV29==='function')drawTeamBoardV29();
+  }catch(e){}
+}
+function v3OpenTacticalFloorDialog(floor){
+  floor=String(floor||'').trim();
+  if(!floor||floor==='전체')return;
+  const old=document.getElementById('v3TacticalFloorOverlay');
+  if(old)old.remove();
+  const current=v3TacticalForFloor(floor);
+  const opts=['화점층','직상층','직하층','상층','하층','옥상','지하층'];
+  const ov=document.createElement('div');
+  ov.id='v3TacticalFloorOverlay';
+  ov.className='v3TacticalOverlay';
+  ov.innerHTML='<div class="v3TacticalSheet">'+
+    '<div class="v3TacticalTitle">'+escapeHtml(floor)+' 전술층 설정</div>'+
+    '<div class="v3TacticalSub">현장 상황에 맞는 전술층을 선택하세요.</div>'+
+    '<div class="v3TacticalChoices">'+
+      '<button type="button" class="v3TacticalChoice '+(!current?'active':'')+'" data-v="">미지정</button>'+
+      opts.map(v=>'<button type="button" class="v3TacticalChoice '+(current===v?'active ':'')+(v==='화점층'?'fire':'')+'" data-v="'+escapeAttr(v)+'">'+(v==='화점층'?'🔥 ':'')+escapeHtml(v)+'</button>').join('')+
+    '</div>'+
+    '<div class="v3TacticalActions"><button type="button" class="v3TacCancel">취소</button><button type="button" class="v3TacApply">적용</button></div>'+
+  '</div>';
+  document.body.appendChild(ov);
+  let selected=current;
+  ov.querySelectorAll('.v3TacticalChoice').forEach(b=>b.addEventListener('click',()=>{
+    selected=b.dataset.v||'';
+    ov.querySelectorAll('.v3TacticalChoice').forEach(x=>x.classList.toggle('active',x===b));
+  }));
+  ov.querySelector('.v3TacCancel').onclick=()=>ov.remove();
+  ov.querySelector('.v3TacApply').onclick=()=>{
+    const map=v3LoadTacticalFloors();
+    if(selected)map[floor]=selected; else delete map[floor];
+    v3SaveTacticalFloors(map);
+    ov.remove();
+    v3RefreshAfterTacticalChange();
+  };
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+}
+</script>
+<style id="v3-tactical-floor-style">
+.v3TacticalBadge{display:inline-flex;align-items:center;margin-left:6px;padding:3px 7px;border-radius:999px;background:#eaf2ff;border:1px solid #a9c5ea;color:#174f89;font-size:12px;font-weight:950;line-height:1;vertical-align:middle;white-space:nowrap}
+.v3TacticalBadge.fire{background:#fff0f0;border-color:#ef8c8c;color:#c51f1f}
+.v3TacticalOverlay{position:fixed;inset:0;z-index:20000;background:rgba(15,23,42,.42);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box}
+.v3TacticalSheet{width:min(430px,100%);background:#fff;border-radius:18px;padding:20px;box-shadow:0 18px 55px rgba(0,0,0,.24)}
+.v3TacticalTitle{font-size:21px;font-weight:950;color:#173d67}.v3TacticalSub{margin-top:5px;font-size:13px;font-weight:800;color:#6b7d8e}
+.v3TacticalChoices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:17px}
+.v3TacticalChoice{min-height:48px;border:1px solid #d7e0e8;border-radius:10px;background:#f8fafc;color:#29445f;font-size:15px;font-weight:950;cursor:pointer}
+.v3TacticalChoice.active{border:2px solid #1677ff;background:#eef6ff;color:#1259a7}.v3TacticalChoice.fire{color:#c82323}.v3TacticalChoice.fire.active{border-color:#ef4444;background:#fff1f1}
+.v3TacticalActions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:17px}.v3TacticalActions button{height:48px;border-radius:10px;font-size:15px;font-weight:950;cursor:pointer}
+.v3TacCancel{border:1px solid #d7e0e8;background:#fff;color:#40566b}.v3TacApply{border:1px solid #173d67;background:#173d67;color:#fff}
+#teamBoardPageV29 .r17fTacticalMini{display:inline-flex;margin-left:5px;padding:2px 6px;border-radius:999px;background:#eaf2ff;color:#174f89;border:1px solid #a9c5ea;font-size:clamp(9px,.64vw,12px);font-weight:950;white-space:nowrap}
+#teamBoardPageV29 .r17fTacticalMini.fire{background:#fff0f0;color:#c51f1f;border-color:#ef8c8c}
+</style>
+
 <script id="r17r-command-shared-helpers">
 function v29CleanName(m){
   const raw=String((m&&m.memberName)||"").trim();
@@ -8987,7 +9092,7 @@ function r17pRenderCurrentTeamPage(){
   };
 
   let r17fSelectedFloor='전체';
-  const R17F_FLOORS=['옥상','상층','직상층','화점층','직하층','하층','지하층'];
+  let R17F_FLOORS=[]; /* V3-6: 현재 실제 활동층으로 매 렌더링 시 재구성 */
 
   function r17fFloorTeams(teams,floor){
     return (Array.isArray(teams)?teams:[]).filter(t=>{
@@ -9006,6 +9111,8 @@ function r17pRenderCurrentTeamPage(){
     /* 중요: 24차가 실제로 사용하던 동일한 활동대원 원본과 동일한 조 편성 함수만 사용 */
     const list=window.__dashboardInsideMembers||[];
     const teams=typeof v29GroupTeams==='function'?v29GroupTeams(list):[];
+    R17F_FLOORS=v3ActivePhysicalFloors(teams);
+    if(r17fSelectedFloor!=='전체'&&!R17F_FLOORS.includes(r17fSelectedFloor))r17fSelectedFloor='전체';
 
     const orgOf=m=>{
       let dept='';
@@ -9091,8 +9198,9 @@ function r17pRenderCurrentTeamPage(){
       '<div class="r17fPanelTitle">층 선택</div>'+allBtn+
       R17F_FLOORS.map(f=>{
         const here=r17fFloorTeams(teams,f);
-        return '<button type="button" class="r17fFloorBtn '+(f===r17fSelectedFloor?'active ':'')+(f==='화점층'?'fire':'')+'" data-r17-floor="'+E(f)+'">'+
-          '<div class="r17fFloorHead"><span class="r17fFloorName">'+(f==='화점층'?'🔥 ':'')+E(f)+'</span><strong>'+here.length+'개조</strong></div>'+
+        const tactical=v3TacticalForFloor(f);
+        return '<button type="button" class="r17fFloorBtn '+(f===r17fSelectedFloor?'active ':'')+(tactical==='화점층'?'fire':'')+'" data-r17-floor="'+E(f)+'">'+
+          '<div class="r17fFloorHead"><span class="r17fFloorName">'+E(f)+(tactical?'<span class="r17fTacticalMini '+(tactical==='화점층'?'fire':'')+'">'+(tactical==='화점층'?'🔥 ':'')+E(tactical)+'</span>':'')+'</span><strong>'+here.length+'개조</strong></div>'+
           (here.length?'<div class="r17fFloorTeams">'+here.map(t=>
             '<span class="r17fTeamBadge '+v29TeamCss(t.team)+'">'+E(t.team)+'</span>'
           ).join('')+'</div>':'')+
@@ -9100,7 +9208,10 @@ function r17pRenderCurrentTeamPage(){
       }).join('');
 
     floorPanel.querySelectorAll('.r17fFloorBtn').forEach(btn=>btn.addEventListener('click',function(e){
-      e.preventDefault();e.stopPropagation();r17fSelectFloor(this.dataset.r17Floor||'전체');
+      e.preventDefault();e.stopPropagation();
+      const f=this.dataset.r17Floor||'전체';
+      r17fSelectFloor(f);
+      if(f!=='전체')setTimeout(()=>v3OpenTacticalFloorDialog(f),0);
     }));
 
     /* 2번: 층별현황 — 전체면 모든 활동조, 개별층이면 해당층만 */
@@ -9128,7 +9239,7 @@ function r17pRenderCurrentTeamPage(){
         return '<div class="r17fActivityTeamCard">'+
           '<div class="r17fActivityTeamTop">'+
             '<div class="r17fTeamHeadWrap">'+
-              (r17fSelectedFloor==='전체'?'<span class="r17fCardFloorTag '+(floorKey==='화점층'?'fire':'')+'">'+(floorKey==='화점층'?'🔥 ':'')+E(floorKey)+'</span>':'')+
+              (r17fSelectedFloor==='전체'?'<span class="r17fCardFloorTag '+(v3TacticalForFloor(floorKey)==='화점층'?'fire':'')+'">'+E(floorKey)+(v3TacticalForFloor(floorKey)?' · '+(v3TacticalForFloor(floorKey)==='화점층'?'🔥 ':'')+E(v3TacticalForFloor(floorKey)):'')+'</span>':'')+
               '<span class="r17fTeamBadge r17fBigTeamBadge '+v29TeamCss(t.team)+'">'+E(t.team)+'</span>'+
             '</div>'+
             '<strong>'+cnt+'명</strong>'+
@@ -9155,11 +9266,12 @@ function r17pRenderCurrentTeamPage(){
 
     const floorColor={
       '옥상':'#7c3aed','상층':'#0891b2','직상층':'#1677ff','화점층':'#ef2020',
-      '직하층':'#0f9588','하층':'#f2b705','지하층':'#475569'
+      '직하층':'#0f9588','상층':'#0891b2','하층':'#f2b705','지하층':'#475569'
     };
 
     const buildingFloors=R17F_FLOORS.map((f,idx)=>{
       const here=r17fFloorTeams(teams,f);
+      const tactical=v3TacticalForFloor(f);
       const teamHtml=here.map(t=>{
         const detText=detail(t.detail);
         const showDetail=(!detText||detText==='미지정'||/세부\s*장소\s*미지정/i.test(detText))?'-':detText;
@@ -9176,7 +9288,7 @@ function r17pRenderCurrentTeamPage(){
           '</div>'
         : '';
 
-      return '<div class="r17bFloor '+(f==='화점층'?'fire':'')+'" style="--fc:'+floorColor[f]+';--fi:'+idx+'">'+
+      return '<div class="r17bFloor '+(tactical==='화점층'?'fire':'')+'" style="--fc:'+floorColor[tactical]||'#64748b'+';--fi:'+idx+'">'+
         '<div class="r17bBackTop"></div>'+
         '<div class="r17bBackLeft"></div>'+
         '<div class="r17bBackRight"></div>'+
