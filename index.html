@@ -1573,6 +1573,14 @@ button:disabled{
 }
 </style>
 
+
+<style id="v3EditFloorStepperStyle">
+#dashboardDetailOverlay .v3EditFloorStep{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;margin:6px 0 12px}
+#dashboardDetailOverlay .v3EditFloorBtn,#dashboardDetailOverlay .v3EditFloorBanner{height:52px;box-sizing:border-box;border-radius:10px;font-size:20px;font-weight:950}
+#dashboardDetailOverlay .v3EditFloorBtn{border:1px solid #9fb7d1;background:#fff;color:#173d67;cursor:pointer}
+#dashboardDetailOverlay .v3EditFloorBanner{display:flex;align-items:center;justify-content:center;background:#173d67;color:#fff;border:1px solid #173d67}
+</style>
+
 </head>
 
 <body>
@@ -8389,6 +8397,41 @@ function floorOptions(cur){
   const vals=base.includes(now)?base:[now].concat(base);
   return vals.map(v=>'<option value="'+attr(v)+'" '+(v===now?'selected':'')+'>'+esc(v)+'</option>').join('');
 }
+function v3EditFloorNormalize(v){
+  v=String(v||'').trim();
+  if(!v||v==='미지정'||v==='선택안함') return '미지정';
+  if(/^B\d+$/i.test(v)) return 'B'+Math.max(1,parseInt(v.slice(1),10)||1);
+  const m=v.match(/^(\d+)층$/);
+  if(m) return Math.max(1,parseInt(m[1],10)||1)+'층';
+  return '미지정';
+}
+function v3EditFloorStep(v,delta){
+  v=v3EditFloorNormalize(v);
+  if(v==='미지정') return delta>0?'1층':'B1';
+  if(/^B\d+$/.test(v)){
+    let n=parseInt(v.slice(1),10)||1;
+    if(delta>0) return n<=1?'1층':'B'+(n-1);
+    return 'B'+(n+1);
+  }
+  let n=parseInt(v,10)||1;
+  if(delta>0) return (n+1)+'층';
+  return n<=1?'B1':(n-1)+'층';
+}
+function v3EditFloorHtml(id,cur){
+  const v=v3EditFloorNormalize(cur);
+  return '<div class="v3EditFloorStep"><button type="button" class="v3EditFloorBtn" data-floor-target="'+id+'" data-floor-delta="-1">−</button><input type="hidden" id="'+id+'" value="'+attr(v)+'"><div class="v3EditFloorBanner" id="'+id+'Banner">'+esc(v)+'</div><button type="button" class="v3EditFloorBtn" data-floor-target="'+id+'" data-floor-delta="1">＋</button></div>';
+}
+function v3BindEditFloor(root){
+  (root||document).querySelectorAll('.v3EditFloorBtn').forEach(function(btn){
+    btn.onclick=function(){
+      const id=this.getAttribute('data-floor-target'),delta=Number(this.getAttribute('data-floor-delta'))||0;
+      const input=document.getElementById(id),banner=document.getElementById(id+'Banner');
+      if(!input)return;
+      input.value=v3EditFloorStep(input.value,delta);
+      if(banner)banner.textContent=input.value;
+    };
+  });
+}
 window.v251R9OpenTeam=function(team){
   const ms=(window.__dashboardInsideMembers||[]).filter(m=>teamName(m)===team);
   if(!ms.length)return;
@@ -8406,9 +8449,10 @@ window.v251R9OpenTeam=function(team){
   const iso=ms.filter(m=>m.isolated).length,o=overlay();
   const curDir=first.direction||'', curFloor=first.floor||'', curDetail=first.detail||'';
   const dirHtml=curDir?directionOptions(curDir):'<option value="" selected>현재값 유지</option>'+directionOptions('');
-  const floorHtml=curFloor?floorOptions(curFloor):'<option value="" selected>현재값 유지</option>'+floorOptions('');
-  o.innerHTML='<div class="dashboardDetailSheet"><div class="sheetHeader"><b>🛡️ '+esc(team)+' · 조 정보변경</b><div class="r17eHeaderActions"><button type="button" id="r9TeamIsolationBtn" class="r17eIsolationBtn '+(iso===ms.length?'isIsolated':'')+'">'+(iso===ms.length?'✓ 조 고립 해제':'🚨 조 고립 지정')+'</button><button type="button" id="r9Close" class="sheetClose">×</button></div></div><div class="v251R9State">현재 고립 '+iso+'명 · 조 전체 '+ms.length+'명</div><div class="locationEditForm"><label>방면<select id="r9Dir">'+dirHtml+'</select></label><label>활동층<select id="r9Floor">'+floorHtml+'</select></label><label>세부장소<input id="r9Detail" value="'+attr(curDetail)+'" placeholder="예: 기계실 / 1203호 / 계단실"></label></div><div class="v251R9Note">현재 위치를 불러오지 못한 항목은 변경하지 않고 기존 값을 유지합니다.</div><button type="button" id="r9Save" class="sheetSave">조 정보변경 반영</button></div>';
+  const floorStart=v3EditFloorNormalize(curFloor);
+  o.innerHTML='<div class="dashboardDetailSheet"><div class="sheetHeader"><b>🛡️ '+esc(team)+' · 조 정보변경</b><div class="r17eHeaderActions"><button type="button" id="r9TeamIsolationBtn" class="r17eIsolationBtn '+(iso===ms.length?'isIsolated':'')+'">'+(iso===ms.length?'✓ 조 고립 해제':'🚨 조 고립 지정')+'</button><button type="button" id="r9Close" class="sheetClose">×</button></div></div><div class="v251R9State">현재 고립 '+iso+'명 · 조 전체 '+ms.length+'명</div><div class="locationEditForm"><label>방면<select id="r9Dir">'+dirHtml+'</select></label><label>활동층</label>'+v3EditFloorHtml('r9Floor',floorStart)+'<label>세부장소<input id="r9Detail" value="'+attr(curDetail)+'" placeholder="예: 기계실 / 1203호 / 계단실"></label></div><div class="v251R9Note">현재 위치를 불러오지 못한 항목은 변경하지 않고 기존 값을 유지합니다.</div><button type="button" id="r9Save" class="sheetSave">조 정보변경 반영</button></div>';
   o.classList.add('show');
+  v3BindEditFloor(o);
   document.getElementById('r9Close').onclick=()=>o.classList.remove('show');
   document.getElementById('r9TeamIsolationBtn').onclick=async function(){
     const btn=this;
@@ -8442,7 +8486,7 @@ window.v251R9OpenTeam=function(team){
     if(d)setTimeout(()=>o.classList.remove('show'),300);
   };
 };
-window.v251R9OpenMember=function(id,name){const m=find(id);if(!m)return;const i=info(m),team=i.team||m.team||'',dir=i.direction||m.direction||'',floor=i.floor||m.floor||'',detail=i.detail||m.detail||'',act=Number(i.activityNo||m.activityNo||m.entryCount||1)||1,o=overlay();o.innerHTML='<div class="dashboardDetailSheet"><div class="sheetHeader"><b>🛡️ 대원정보변경</b><button type="button" id="r9MClose" class="sheetClose">×</button></div><div class="sheetMemberTitle">'+esc(getMemberDisplay(id,name||m.memberName||''))+'</div><div class="v251R9State">현재 상태: '+(m.isolated?'🚨 고립대원':'정상')+'</div><div class="locationEditForm"><label>조<input id="r9MTeam" value="'+attr(team)+'"></label><label>진입방면<select id="r9MDir">'+directionOptions(dir||'미지정')+'</select></label><label>활동층<select id="r9MFloor">'+floorOptions(floor||'미지정')+'</select></label><label>세부장소<input id="r9MDetail" value="'+attr(detail)+'" placeholder="예: 기계실 / 1203호 / 계단실"></label></div><button type="button" id="r9MSave" class="sheetSave">대원정보변경 반영</button></div>';o.classList.add('show');document.getElementById('r9MClose').onclick=()=>o.classList.remove('show');document.getElementById('r9MSave').onclick=async function(){const d=await post('updateSafetyManagement',[id],{team:document.getElementById('r9MTeam').value,activityNo:String(act),direction:document.getElementById('r9MDir').value,floor:document.getElementById('r9MFloor').value,detail:document.getElementById('r9MDetail').value},this);if(d)setTimeout(()=>o.classList.remove('show'),300);};};
+window.v251R9OpenMember=function(id,name){const m=find(id);if(!m)return;const i=info(m),team=i.team||m.team||'',dir=i.direction||m.direction||'',floor=i.floor||m.floor||'',detail=i.detail||m.detail||'',act=Number(i.activityNo||m.activityNo||m.entryCount||1)||1,o=overlay();o.innerHTML='<div class="dashboardDetailSheet"><div class="sheetHeader"><b>🛡️ 대원정보변경</b><button type="button" id="r9MClose" class="sheetClose">×</button></div><div class="sheetMemberTitle">'+esc(getMemberDisplay(id,name||m.memberName||''))+'</div><div class="v251R9State">현재 상태: '+(m.isolated?'🚨 고립대원':'정상')+'</div><div class="locationEditForm"><label>조<input id="r9MTeam" value="'+attr(team)+'"></label><label>진입방면<select id="r9MDir">'+directionOptions(dir||'미지정')+'</select></label><label>활동층</label>'+v3EditFloorHtml('r9MFloor',floor||'미지정')+'<label>세부장소<input id="r9MDetail" value="'+attr(detail)+'" placeholder="예: 기계실 / 1203호 / 계단실"></label></div><button type="button" id="r9MSave" class="sheetSave">대원정보변경 반영</button></div>';o.classList.add('show');v3BindEditFloor(o);document.getElementById('r9MClose').onclick=()=>o.classList.remove('show');document.getElementById('r9MSave').onclick=async function(){const d=await post('updateSafetyManagement',[id],{team:document.getElementById('r9MTeam').value,activityNo:String(act),direction:document.getElementById('r9MDir').value,floor:document.getElementById('r9MFloor').value,detail:document.getElementById('r9MDetail').value},this);if(d)setTimeout(()=>o.classList.remove('show'),300);};};
 const oldTeam=window.openDashboardTeamLocationEdit;window.openDashboardTeamLocationEdit=function(team){v251R9OpenTeam(team);};
 const oldDetail=window.openDashboardMemberDetail;
 function r16mDetailText(v){
