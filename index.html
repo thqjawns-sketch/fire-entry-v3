@@ -9260,13 +9260,30 @@ function r17pRenderCurrentTeamPage(){
       });
     });
 
-    /* 2번: 층별현황 — 전체면 모든 활동조, 개별층이면 해당층만 */
+    /* V3-17: 층별현황 상단 실시간 요약 */
     center.style.display='block';
-    center.innerHTML='<div class="r17fActivityTitle">층별현황</div>';
 
     const selected=(r17fSelectedFloor==='전체')
       ? teams
       : r17fFloorTeams(teams,r17fSelectedFloor);
+
+    const selectedPeople=selected.reduce((sum,t)=>{
+      const members=Array.isArray(t&&t.members)?t.members:[];
+      const n=Number(t&&t.count);
+      return sum+(Number.isFinite(n)&&n>=0?n:members.length);
+    },0);
+    const selectedTactical=(r17fSelectedFloor==='전체')?'':v3TacticalForFloor(r17fSelectedFloor);
+    const titleText=(r17fSelectedFloor==='전체')?'층별 현황판':(r17fSelectedFloor+' 현황');
+
+    center.innerHTML=
+      '<div class="r17fActivityTitle r17fSummaryHeader">'+
+        '<span class="r17fSummaryTitle">'+E(titleText)+'</span>'+
+        (selectedTactical?'<span class="r17fSummaryDivider"></span><span class="r17fSummaryTactical '+(selectedTactical==='화점층'?'fire':'')+'">'+(selectedTactical==='화점층'?'🔥 ':'')+E(selectedTactical)+'</span>':'')+
+        '<span class="r17fSummaryDivider"></span>'+
+        '<span class="r17fSummaryMetric"><small>활동조</small><strong>'+selected.length+'개조</strong></span>'+
+        '<span class="r17fSummaryDivider"></span>'+
+        '<span class="r17fSummaryMetric"><small>총 조원</small><strong>'+selectedPeople+'명</strong></span>'+
+      '</div>';
 
     if(selected.length){
       center.innerHTML+='<div class="r17fActivityTeams">'+selected.map(t=>{
@@ -11306,6 +11323,18 @@ function r17pRenderCurrentTeamPage(){
   max-width:180px!important;
   font-size:clamp(11px,.84vw,15px)!important;
 }
+</style>
+
+
+<style id="v3-17-floor-summary-header">
+#teamBoardPageV29 .r17fSummaryHeader{min-height:48px!important;height:auto!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:14px!important;padding:5px 12px!important;box-sizing:border-box!important;white-space:nowrap!important;border-bottom:1px solid #dce5ee!important;color:#173d67!important}
+#teamBoardPageV29 .r17fSummaryTitle{font-size:clamp(19px,1.35vw,26px)!important;font-weight:1000!important;letter-spacing:-.04em!important}
+#teamBoardPageV29 .r17fSummaryDivider{width:1px!important;height:30px!important;flex:0 0 1px!important;background:#d7e0e8!important}
+#teamBoardPageV29 .r17fSummaryTactical{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:31px!important;padding:0 10px!important;border:1px solid #b9c8d6!important;border-radius:7px!important;background:#f7fafc!important;font-size:clamp(15px,1.05vw,20px)!important;font-weight:1000!important}
+#teamBoardPageV29 .r17fSummaryTactical.fire{color:#d71919!important;border-color:#ff9b9b!important;background:#fff3f3!important}
+#teamBoardPageV29 .r17fSummaryMetric{display:inline-flex!important;align-items:center!important;gap:8px!important}
+#teamBoardPageV29 .r17fSummaryMetric small{font-size:clamp(13px,.9vw,17px)!important;font-weight:900!important;color:#526b83!important}
+#teamBoardPageV29 .r17fSummaryMetric strong{font-size:clamp(20px,1.45vw,28px)!important;font-weight:1000!important;color:#123f70!important;letter-spacing:-.04em!important}
 </style>
 
 </body>
