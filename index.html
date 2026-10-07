@@ -1616,7 +1616,7 @@ button:disabled{
 
 
 <!-- V3-19 PWA: V2와 별도 설치되는 V3 전용 앱 -->
-<link rel="manifest" href="./manifest-v3.webmanifest">
+<link rel="manifest" href="./manifest-v3-v20.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-v3-192.png">
 <link rel="apple-touch-icon" href="./icon-v3-192.png">
 <meta name="theme-color" content="#ffffff">
@@ -11373,7 +11373,7 @@ function r17pRenderCurrentTeamPage(){
 <script id="v3-19-pwa-register">
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('./sw-v3.js', {scope:'./'})
+    navigator.serviceWorker.register('./sw-v3-v20.js', {scope:'./'})
       .catch(function (err) { console.warn('V3 PWA service worker', err); });
   });
 }
