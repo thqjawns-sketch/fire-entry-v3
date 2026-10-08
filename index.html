@@ -2308,8 +2308,19 @@ let V326_POST_DIAG_ACTIVE=null;
 let V326_POST_DIAG_LAST=null;
 let V326_ACTIVE_API_GETS=0;
 let V326_ACTIVE_API_GET_LABELS=[];
+let V326_ACTIVE_GET_CONTROLLERS=new Set();
+let V326_POST_EXCLUSIVE=false;
+let V326_POST_ABORTED_GETS=0;
 function v326ActiveGetBegin(label){ V326_ACTIVE_API_GETS++; V326_ACTIVE_API_GET_LABELS.push(String(label||"GET")); }
 function v326ActiveGetEnd(label){ V326_ACTIVE_API_GETS=Math.max(0,V326_ACTIVE_API_GETS-1); const i=V326_ACTIVE_API_GET_LABELS.indexOf(String(label||"GET")); if(i>=0)V326_ACTIVE_API_GET_LABELS.splice(i,1); }
+function v326AbortActiveGetsForPost(){
+  let n=0;
+  for(const c of Array.from(V326_ACTIVE_GET_CONTROLLERS)){
+    try{ c.abort("POST_EXCLUSIVE"); n++; }catch(e){}
+  }
+  V326_POST_ABORTED_GETS=n;
+  return n;
+}
 
 function v326DiagStart(params){
   const action=String(params && params.get ? (params.get("action")||"") : "");
@@ -2323,6 +2334,7 @@ function v326DiagStart(params){
     verifyMs:0,
     preExistingGets:V326_ACTIVE_API_GETS,
     preExistingGetLabels:V326_ACTIVE_API_GET_LABELS.slice(),
+    abortedBeforePost:V326_POST_ABORTED_GETS,
     clientPostStartEpoch:Date.now()
   };
   V326_POST_DIAG_ACTIVE=d;
@@ -2350,23 +2362,41 @@ function v249L38Sleep(ms){
 }
 
 async function v249L38NativeJson(url,init,label){
+  /* V3-26 POST 단독통신 시험
+     - 투입/철수 POST 진행 중에는 저장상태 확인을 제외한 신규 GET을 시작하지 않는다.
+     - POST 시작 직전 이미 진행 중인 이 helper의 GET은 AbortController로 정리한다. */
+  if(V326_POST_EXCLUSIVE && String(label||"")!=="저장상태 확인"){
+    const e=new Error("POST_EXCLUSIVE_GET_SKIPPED");
+    e.code="POST_EXCLUSIVE_GET_SKIPPED";
+    throw e;
+  }
+
   v326DiagGet(label,url);
   v326ActiveGetBegin(label);
   let lastError=null;
+  const controller=new AbortController();
+  V326_ACTIVE_GET_CONTROLLERS.add(controller);
   try{
     for(let attempt=0;attempt<V249L38_RETRY_DELAYS.length;attempt++){
       if(attempt>0) await v249L38Sleep(V249L38_RETRY_DELAYS[attempt]);
       try{
-        const res=await V2_NATIVE_FETCH(url,init);
+        const mergedInit=Object.assign({},init||{},{signal:controller.signal});
+        const res=await V2_NATIVE_FETCH(url,mergedInit);
         if(!res || !res.ok) throw new Error((label||"동기화")+" 응답 오류"+(res?" ("+res.status+")":""));
         return await res.json();
       }catch(error){
         lastError=error;
+        if(controller.signal.aborted){
+          throw error;
+        }
         console.warn((label||"동기화")+" 재시도 "+(attempt+1)+"/"+V249L38_RETRY_DELAYS.length,error);
       }
     }
     throw lastError||new Error((label||"동기화")+" 실패");
-  }finally{ v326ActiveGetEnd(label); }
+  }finally{
+    V326_ACTIVE_GET_CONTROLLERS.delete(controller);
+    v326ActiveGetEnd(label);
+  }
 }
 
 function v249L38ParseMemberIds(params){
@@ -2428,6 +2458,17 @@ async function v249L38VerifyWrite(params){
 async function v2CallPost(params){
   if(!params.get("__v326TraceId")) params.set("__v326TraceId","T"+Date.now()+"-"+Math.random().toString(36).slice(2,8));
   params.set("__v326ClientSentAt",String(Date.now()));
+
+  const v326Action=String(params.get("action")||"");
+  const v326ExclusiveWrite=(v326Action==="batchEntry" || v326Action==="batchExit");
+  V326_POST_ABORTED_GETS=0;
+  if(v326ExclusiveWrite){
+    V326_POST_EXCLUSIVE=true;
+    v326AbortActiveGetsForPost();
+    /* abort의 finally가 active GET 계수를 정리할 짧은 틈 */
+    await new Promise(resolve=>setTimeout(resolve,60));
+  }
+
   const v326Diag=v326DiagStart(params);
   v249L38WritePending++;
   let lastError=null;
@@ -2482,6 +2523,7 @@ async function v2CallPost(params){
   }finally{
     v326DiagFinish(v326Diag);
     v249L38WritePending=Math.max(0,v249L38WritePending-1);
+    if(v326ExclusiveWrite) V326_POST_EXCLUSIVE=false;
   }
 }
 
