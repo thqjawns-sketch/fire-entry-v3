@@ -11398,27 +11398,43 @@ function r17pRenderCurrentTeamPage(){
 .v325RecentDetailButtons{display:flex;gap:6px;flex-wrap:wrap}
 .v325RecentDetailBtn{width:auto!important;margin:0!important;padding:7px 10px!important;border:1px solid #b8c7d8!important;border-radius:9px!important;background:#f4f8fc!important;color:#173d67!important;font-size:13px!important;font-weight:900!important}
 
-/* V3-26: 3페이지 DOM/JS는 그대로 유지.
-   휴대폰·세로 태블릿에서 층별현황 section 내부만 가로 스크롤 허용. */
+/* 휴대폰/태블릿 세로: 3페이지 원본 가로폭은 유지하고 페이지 안에서 좌우 스와이프 */
 @media (max-width:1180px){
-  #teamBoardPageV29.r17pBoard{
-    overflow:hidden!important;
-    overscroll-behavior:none!important;
-  }
-
-  #teamBoardPageV29.r17pFloorMode #r17pLocationSection{
+  #teamBoardPageV29{
+    width:100vw!important;
+    min-width:0!important;
+    max-width:100vw!important;
+    margin-left:calc(50% - 50vw)!important;
+    margin-right:0!important;
+    padding-left:0!important;
+    padding-right:0!important;
     overflow-x:auto!important;
-    overflow-y:hidden!important;
+    overflow-y:visible!important;
     -webkit-overflow-scrolling:touch;
     overscroll-behavior-x:contain;
-    touch-action:pan-x!important;
+    touch-action:pan-x pan-y!important;
   }
+  #teamBoardPageV29 > *{
+    width:1440px!important;
+    min-width:1440px!important;
+    max-width:1440px!important;
+    box-sizing:border-box!important;
+  }
+}
+</style>
 
-  #teamBoardPageV29.r17pFloorMode .r17pLocationGrid{
-    width:1180px!important;
-    min-width:1180px!important;
-    max-width:none!important;
-    grid-template-columns:minmax(0,15fr) minmax(0,30fr) minmax(0,55fr)!important;
+<style id="v3-18-tablet-horizontal-pan">
+/* 태블릿: 모니터용 정보/크기를 유지하고 화면 자체를 좌우로 이동 */
+@media (max-width:1180px){
+  html,body{
+    overflow-x:auto!important;
+    overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  /* V3-25: 실제 좌우 스크롤은 위의 page3 전용 스크롤 컨테이너가 담당 */
+  #teamBoardPageV29,
+  #teamBoardPageV29 *{
+    touch-action:pan-x pan-y;
   }
 }
 </style>
