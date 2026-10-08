@@ -11637,5 +11637,52 @@ if ('serviceWorker' in navigator) {
 #teamBoardPageV29 .r17fSplitWarn{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;border:1px solid #e3a008;background:#fff8df;color:#8a5a00;font-size:12px;font-weight:950;white-space:nowrap}
 #teamBoardPageV29 .r17fSplitPart{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;border:1px solid #b8c8d8;background:#f5f8fb;color:#173d67;font-size:12px;font-weight:900;white-space:nowrap}
 </style>
+
+
+<!-- V3-31: 휴대폰/태블릿 세로 3페이지 좌우 이동 복구 -->
+<style id="v3-31-page3-mobile-horizontal-pan-fix">
+@media (max-width:1180px){
+  #teamBoardPageV29.r17pBoard{
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-x:contain!important;
+    touch-action:pan-x pan-y!important;
+    scrollbar-width:auto;
+  }
+  #teamBoardPageV29.r17pBoard > .r17pHeader,
+  #teamBoardPageV29.r17pBoard > .r17pMain{
+    width:1440px!important;
+    min-width:1440px!important;
+    max-width:none!important;
+  }
+}
+</style>
+<script id="v3-31-page3-mobile-horizontal-pan-fix-js">
+(function(){
+  const root=document.getElementById('teamBoardPageV29');
+  if(!root || root.dataset.v331Pan==='1') return;
+  root.dataset.v331Pan='1';
+  let sx=0, sy=0, sl=0, active=false, horizontal=false;
+  root.addEventListener('touchstart',function(e){
+    if(!e.touches || e.touches.length!==1) return;
+    const t=e.touches[0];
+    sx=t.clientX; sy=t.clientY; sl=root.scrollLeft; active=true; horizontal=false;
+  },{passive:true});
+  root.addEventListener('touchmove',function(e){
+    if(!active || !e.touches || e.touches.length!==1) return;
+    const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy;
+    if(!horizontal && Math.abs(dx)>8 && Math.abs(dx)>Math.abs(dy)) horizontal=true;
+    if(horizontal){
+      root.scrollLeft=sl-dx;
+      if(e.cancelable) e.preventDefault();
+    }
+  },{passive:false});
+  const end=function(){active=false;horizontal=false;};
+  root.addEventListener('touchend',end,{passive:true});
+  root.addEventListener('touchcancel',end,{passive:true});
+})();
+</script>
+
 </body>
 </html>
