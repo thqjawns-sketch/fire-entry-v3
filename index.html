@@ -8377,7 +8377,49 @@ async function post(action,ids,extra,btn){
 async function safety(ids){if(!ids||!ids.length)return;if(!confirm(ids.length+'명을 안전확인 완료 처리하시겠습니까?\n확인 후 10분 동안 빨간 깜빡임이 중지되고, 10분 후 재확인 대상이 됩니다.'))return;await post('setSafetyCheck',ids,{},null);}
 function recentSafety(m){const t=parseTime(m&&m.safetyCheckedAt);return Number.isFinite(t)&&Math.max(0,(Date.now()-t)/60000)<RECHECK;}
 function applyTeamSafetyButtons(){document.querySelectorAll('#dashboardInside .teamDividerV19').forEach(div=>{const team=div.dataset.team||'';const btn=div.querySelector('.dashboardTeamSafetyBtn');if(!btn)return;const ms=(window.__dashboardInsideMembers||[]).filter(m=>teamName(m)===team);const done=ms.length>0&&ms.every(recentSafety);btn.classList.toggle('isConfirmed',done);if(!btn.disabled){if(done){const remains=ms.map(m=>state(m).remain).filter(Number.isFinite);const r=remains.length?Math.min(...remains):10;btn.textContent='✓ 안전확인 · 재확인 '+r+'분';}else btn.textContent='🛡 조 안전확인';}});}
-window.v251TeamSafety=async function(team,btn){const ms=(window.__dashboardInsideMembers||[]).filter(m=>teamName(m)===team);if(!ms.length)return;const old=btn?btn.textContent:'🛡 조 안전확인';if(btn){btn.disabled=true;btn.textContent='⏳ 처리중...';}const d=await post('setSafetyCheck',ms.map(m=>m.memberId),{},null);if(d){const now=new Date().toISOString();ms.forEach(m=>{m.safetyCheckedAt=(d.succeeded||[]).find(x=>String(x.id)===String(m.memberId))?.checkedAt||now;});if(btn){btn.classList.add('isConfirmed');btn.textContent='✓ 안전확인';}}else if(btn){btn.textContent=old;}if(btn)btn.disabled=false;applyTeamSafetyButtons();};
+/* V3-32: 조 안전확인 POST 응답이 10초를 넘겨도 서버 저장은 이미 끝났을 수 있다.
+   이 경우 누른 기기만 실패처럼 원복하지 않고, 진행 중인 쓰기가 끝난 뒤 dashboard를 재조회하여
+   해당 조 전원의 safetyCheckedAt을 서버값으로 확인한 후 버튼 상태를 확정한다. */
+async function v332WaitTeamSafetyConfirmed(team,memberIds,btn,oldText){
+  const wanted=new Set((memberIds||[]).map(x=>String(x)));
+  const started=Date.now();
+  if(btn){btn.disabled=true;btn.textContent='↻ 저장 확인중...';}
+  while(Date.now()-started<30000){
+    /* post()의 10초 UI 타임아웃 뒤에도 실제 v2CallPost가 진행 중일 수 있으므로
+       writeBusy가 풀리기 전에는 loadDashboard(false)를 호출하지 않는다. */
+    if(!(typeof v249R8WriteBusy==='function'&&v249R8WriteBusy())){
+      try{await loadDashboard(false);}catch(e){}
+      const latest=(window.__dashboardInsideMembers||[]).filter(m=>teamName(m)===team&&wanted.has(String(m.memberId)));
+      const confirmed=latest.length===wanted.size&&latest.length>0&&latest.every(recentSafety);
+      if(confirmed){
+        if(btn){btn.classList.add('isConfirmed');btn.disabled=false;}
+        applyTeamSafetyButtons();
+        return true;
+      }
+    }
+    await new Promise(r=>setTimeout(r,1200));
+  }
+  if(btn){btn.disabled=false;btn.textContent=oldText;}
+  applyTeamSafetyButtons();
+  return false;
+}
+window.v251TeamSafety=async function(team,btn){
+  const ms=(window.__dashboardInsideMembers||[]).filter(m=>teamName(m)===team);
+  if(!ms.length)return;
+  const ids=ms.map(m=>m.memberId);
+  const old=btn?btn.textContent:'🛡 조 안전확인';
+  if(btn){btn.disabled=true;btn.textContent='⏳ 처리중...';}
+  const d=await post('setSafetyCheck',ids,{},null);
+  if(d){
+    const now=new Date().toISOString();
+    ms.forEach(m=>{m.safetyCheckedAt=(d.succeeded||[]).find(x=>String(x.id)===String(m.memberId))?.checkedAt||now;});
+    if(btn){btn.classList.add('isConfirmed');btn.textContent='✓ 안전확인';btn.disabled=false;}
+    applyTeamSafetyButtons();
+    return;
+  }
+  /* 응답 지연/타임아웃이면 즉시 원복하거나 재클릭을 허용하지 않고 서버값을 확인한다. */
+  await v332WaitTeamSafetyConfirmed(team,ids,btn,old);
+};
 function renderTargets(){const box=document.getElementById('v251SafetyTargets');if(box)box.remove();}
 function applyRows(){['dashboardInside','insideList'].forEach(rootId=>{const root=document.getElementById(rootId);if(!root)return;const source=(window.__dashboardInsideMembers||[]);root.querySelectorAll('.memberRow').forEach(row=>{const idEl=row.querySelector('.compactId');if(!idEl)return;const id=idEl.textContent.trim();const m=source.find(x=>String(x.memberId)===String(id));if(!m)return;const s=state(m);row.classList.remove('v251NeedsCheck','v251SafetyConfirmed','v251IsolationBlink');if(s.isolated)row.classList.add('v251IsolationBlink');else if(s.due)row.classList.add('v251NeedsCheck');else if(s.confirmed)row.classList.add('v251SafetyConfirmed');const elapsed=row.querySelector('.insideElapsed');if(elapsed)elapsed.textContent=(s.mins>=30?'🔴 ':'')+s.mins+'분 경과';const st=row.querySelector('.insideStatus');if(st){st.classList.remove('v251NeedsCheck','v251SafetyConfirmed','v251IsolationBlink');if(s.isolated)st.classList.add('v251IsolationBlink');else if(s.due)st.classList.add('v251NeedsCheck');else if(s.confirmed)st.classList.add('v251SafetyConfirmed');st.textContent=s.icon+' '+s.text;}});});}
 
