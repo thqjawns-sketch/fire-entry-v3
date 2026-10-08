@@ -3033,13 +3033,17 @@ async function v249L31OpenReport(siteIdOverride,siteNameOverride){
 
 
 window.onload =
-function(){
+async function(){
 
   loadLocalCache();
 
-  loadSites();
+  /* V3-26 3차 성능개선
+     앱 시작 시 sites와 members를 동시에 호출하지 않는다.
+     현장목록 서버 조회가 끝난 뒤 대원명단을 조회해
+     Apps Script 시작 구간의 동시 요청을 줄인다. */
+  await loadSites();
 
-  loadMembers();
+  await loadMembers();
 
 };
 
