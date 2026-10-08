@@ -8867,9 +8867,23 @@ function v3SortPhysicalFloors(a,b){
 }
 function v3ActivePhysicalFloors(teams){
   const set=new Set();
+  /* V3-29: 조 대표층이 '위치 분산'이어도 실제 대원별 활동층을 기준으로 층을 유지한다. */
   (teams||[]).forEach(t=>{
-    const f=String(t?.floor||'').trim();
-    if(f && f!=='미지정' && f!=='위치 분산' && v3PhysicalFloorValue(f)!=null)set.add(f);
+    const members=Array.isArray(t&&t.members)?t.members:[];
+    if(members.length){
+      members.forEach(m=>{
+        const f=String((m&&m.floor)||'').trim();
+        if(f && f!=='미지정' && f!=='위치 분산' && v3PhysicalFloorValue(f)!=null)set.add(f);
+      });
+    }else{
+      const f=String(t&&t.floor||'').trim();
+      if(f && f!=='미지정' && f!=='위치 분산' && v3PhysicalFloorValue(f)!=null)set.add(f);
+    }
+  });
+  /* 전술층은 대원 이동과 독립된 실제층 설정이다. 활동대원이 0명이 되어도 사용자가 해제하기 전까지 표시한다. */
+  const tactical=v3LoadTacticalFloors();
+  Object.keys(tactical||{}).forEach(f=>{
+    if(String(tactical[f]||'').trim() && v3PhysicalFloorValue(f)!=null)set.add(f);
   });
   return [...set].sort(v3SortPhysicalFloors);
 }
@@ -9304,10 +9318,25 @@ function r17pRenderCurrentTeamPage(){
   function r17fFloorTeams(teams,floor){
     const target=r17fPhysicalFloorKey(floor);
     if(!target)return [];
-    return (Array.isArray(teams)?teams:[]).filter(t=>{
-      if(t&&t.dispersed)return false;
-      return r17fPhysicalFloorKey(t&&t.floor)===target;
+    /* V3-29: '위치 분산'은 조의 요약표시일 뿐 층별 현황에서 조를 제외하는 조건이 아니다.
+       각 대원의 서버 활동층으로 해당 층 대원만 추려 같은 조를 층별로 투영한다. */
+    const out=[];
+    (Array.isArray(teams)?teams:[]).forEach(t=>{
+      const members=Array.isArray(t&&t.members)?t.members:[];
+      const here=members.filter(m=>r17fPhysicalFloorKey(m&&m.floor)===target);
+      if(here.length){
+        out.push(Object.assign({},t,{
+          floor:target,
+          members:here,
+          count:here.length,
+          names:here.map(m=>v29CleanName(m)).filter(Boolean),
+          dispersed:false
+        }));
+      }else if(!members.length && !(t&&t.dispersed) && r17fPhysicalFloorKey(t&&t.floor)===target){
+        out.push(t);
+      }
     });
+    return out;
   }
 
   function r17fRenderFloorOnlyBoard(){
