@@ -5375,15 +5375,28 @@ async function batchEntryMembers(){
         " / parse "+((Number(x.parseMs)||0)/1000).toFixed(3)+"]"
       ).join(", ")||"-";
       const getLabels=(pd&&pd.concurrentGets||[]).map(x=>x.label).join(", ")||"-";
+      const tm=(data&&data.timing)||{};
+      const serverParts=[
+        "현장확인 "+((Number(tm.siteCheckMs)||0)/1000).toFixed(3),
+        "Lock "+((Number(tm.lockWaitMs)||0)/1000).toFixed(3),
+        "대원명부 "+((Number(tm.memberMapMs)||0)/1000).toFixed(3),
+        "CURRENT읽기 "+((Number(tm.currentReadMs)||0)/1000).toFixed(3),
+        "조확정 "+((Number(tm.teamResolveMs)||0)/1000).toFixed(3),
+        "PPE쓰기 "+((Number(tm.ppeWriteMs)||0)/1000).toFixed(3),
+        "HISTORY쓰기 "+((Number(tm.historyWriteMs)||0)/1000).toFixed(3),
+        "CURRENT쓰기 "+((Number(tm.currentWriteMs)||0)/1000).toFixed(3)
+      ].join(" / ");
       diag.textContent=
         "진단 · 서버 "+(serverMs/1000).toFixed(1)+"초 / POST 응답 "+
-        (v249L29FetchMs/1000).toFixed(1)+"초 / 응답차이 "+
+        (v249L29FetchMs/1000).toFixed(1)+"초 / 서버측정후~fetch "+
         (gapMs/1000).toFixed(1)+"초 / 전체 "+
         (v249L29TotalMs/1000).toFixed(1)+"초"+
-        " / POST시도 "+attempts+
+        "\n서버내부 · "+serverParts+
+        "\nPOST시도 "+attempts+
         " / 동시GET "+(pd?pd.concurrentGets.length:0)+"건("+getLabels+")"+
         " / 저장확인 "+(pd?pd.verifyCount:0)+"회"+
         (pd&&pd.verifyMs ? " "+(pd.verifyMs/1000).toFixed(1)+"초" : "");
+      diag.style.whiteSpace="pre-wrap";
     }catch(diagErr){
       console.warn("조 투입 진단표시 실패",diagErr);
     }
