@@ -6899,6 +6899,11 @@ async function loadDashboard(
 
 
     const v251NextInside = dashboard.insideMembers || [];
+    /* V3-22: 다른 태블릿에서 변경된 조/층/방면/세부위치를 이 태블릿 캐시에도
+       먼저 서버값으로 동기화한다. 서버가 항상 최종 원본이다. */
+    v251NextInside.forEach(function(m){
+      try{ if(typeof v2SyncServerMeta==='function')v2SyncServerMeta(m); }catch(e){}
+    });
     const v251PrevSignature = window.__v251InsideStructureSignature || "";
     const v251NextSignature = v251R16EStructureSignature(v251NextInside);
     window.__dashboardInsideMembers = v251NextInside;
@@ -6918,7 +6923,11 @@ async function loadDashboard(
 
     /* R16E: 10초 자동동기화 때 실제 상태 변화가 없으면 DOM 전체를 다시 만들지 않는다.
        체류시간/재확인 카운트는 아래 로컬 타이머가 별도로 갱신한다. */
-    if(!isAutoRefresh || v251PrevSignature !== v251NextSignature){
+    /* V3-22: 2페이지가 열려 있을 때는 매 10초 서버 성공 응답을 그대로 다시 그린다.
+       다른 태블릿의 조/위치 변경이 signature 최적화에 막혀 남는 현상을 제거한다. */
+    const v322DashboardPage=document.getElementById('dashboardPage');
+    const v322DashboardVisible=!!(v322DashboardPage && v322DashboardPage.style.display!=='none');
+    if(!isAutoRefresh || v251PrevSignature !== v251NextSignature || v322DashboardVisible){
       v28DrawTeamStatus(window.__dashboardInsideMembers);
       drawDashboardInside(window.__dashboardInsideMembers);
     }
@@ -8693,10 +8702,19 @@ function v3SortPhysicalFloors(a,b){
   return bv-av; /* 화면 위→아래: 높은 층 → 1층 → B1 → B2 */
 }
 function v3ActivePhysicalFloors(teams){
+  /* V3-22: 조가 여러 층으로 나뉘어도 각 대원의 실제 활동층을 모두 살린다. */
   const set=new Set();
   (teams||[]).forEach(t=>{
-    const f=String(t?.floor||'').trim();
-    if(f && f!=='미지정' && f!=='위치 분산' && v3PhysicalFloorValue(f)!=null)set.add(f);
+    const members=Array.isArray(t&&t.members)?t.members:[];
+    if(members.length){
+      members.forEach(m=>{
+        const f=String(m&&m.floor||'').trim();
+        if(f && f!=='미지정' && v3PhysicalFloorValue(f)!=null)set.add(f);
+      });
+    }else{
+      const f=String(t&&t.floor||'').trim();
+      if(f && f!=='미지정' && f!=='위치 분산' && v3PhysicalFloorValue(f)!=null)set.add(f);
+    }
   });
   return [...set].sort(v3SortPhysicalFloors);
 }
@@ -8794,18 +8812,22 @@ function v29MemberMinutes(m){
 }
 function v29TeamCss(team){return (typeof v19TeamColorClass==='function'?v19TeamColorClass(team):'')||'';}
 function v29GroupTeams(list){
+  /* V3-22: 현재 활동의 조/층/방면/세부위치는 서버 dashboard가 최종 원본.
+     localStorage는 서버 필드가 비어 있을 때만 보조 캐시로 사용한다. */
   const meta=typeof v23LoadMeta==='function'?v23LoadMeta():{},groups={};
   (list||[]).forEach(m=>{
-    const vm=meta[String(m.memberId)]||{},team=vm.teamName||m.team||"조 미지정";
+    const vm=meta[String(m.memberId)]||{};
+    const team=String(m.team||'').trim()||vm.teamName||"조 미지정";
     (groups[team]||(groups[team]=[])).push({m,vm});
   });
   return Object.keys(groups).sort((a,b)=>v28TeamNo(a)-v28TeamNo(b)).map(team=>{
     const g=groups[team];
-    const unique=(key,fallback)=>[...new Set(g.map(x=>String(x.vm[key]||x.m[key]||fallback)))];
-    const dirs=unique("entryDirection","미지정"),floors=unique("activityFloor","미지정");
-    const details=[...new Set(g.map(x=>{const v=String(x.vm.detailLocation||x.m.detail||"").trim();return (!v||v==="미지정"||/세부\s*장소\s*미지정/i.test(v))?"-":v;}))];
+    const pick=(x,serverKey,cacheKey,fallback)=>String(x.m[serverKey]||x.vm[cacheKey]||fallback);
+    const dirs=[...new Set(g.map(x=>pick(x,'direction','entryDirection','미지정')))];
+    const floors=[...new Set(g.map(x=>pick(x,'floor','activityFloor','미지정')))];
+    const details=[...new Set(g.map(x=>{const v=pick(x,'detail','detailLocation','').trim();return (!v||v==='미지정'||/세부\s*장소\s*미지정/i.test(v))?'-':v;}))];
     const maxMin=Math.max(0,...g.map(x=>v29MemberMinutes(x.m)));
-    const actNo=Math.max(1,...g.map(x=>Number(x.vm.teamActivityNo||x.m.activityNo||x.m.entryCount)||1));
+    const actNo=Math.max(1,...g.map(x=>Number(x.m.activityNo||x.m.entryCount||x.vm.teamActivityNo)||1));
     return {team,count:g.length,activityNo:actNo,minutes:maxMin,
       direction:dirs.length===1?dirs[0]:"위치 분산",floor:floors.length===1?floors[0]:"위치 분산",
       detail:details.length===1?details[0]:"위치 분산",dispersed:dirs.length>1||floors.length>1||details.length>1,
@@ -9072,11 +9094,14 @@ function r17pRenderCurrentTeamPage(){
            조 헤더의 세부장소(det)는 그대로 조 단위 표시용으로만 유지한다. */
         const memberDetailRaw=String(m.detail||'').trim();
         const memberDetail=(!memberDetailRaw||memberDetailRaw==='미지정'||/세부\s*장소\s*미지정/i.test(memberDetailRaw))?'-':memberDetailRaw;
+        /* V3-22: 3페이지 대원카드는 조의 합산 위치를 덮어쓰지 않는다.
+           2페이지와 동일하게 해당 대원의 서버 원본 위치를 그대로 표시한다. */
+        const vm=(typeof v23LoadMeta==='function'?v23LoadMeta():{})[String(m.memberId)]||{};
         const cm=Object.assign({},m,{
-          team:t.team,
-          activityNo:Number(t.activityNo||1),
-          direction:dir,
-          floor:floor,
+          team:String(m.team||'').trim()||t.team,
+          activityNo:Number(m.activityNo||m.entryCount||vm.teamActivityNo||t.activityNo||1),
+          direction:String(m.direction||'').trim()||vm.entryDirection||'미지정',
+          floor:String(m.floor||'').trim()||vm.activityFloor||'미지정',
           detail:memberDetail
         });
         const rowClass=typeof v16QMemberRowClass==='function'?v16QMemberRowClass(cm):'memberRow';
@@ -9123,12 +9148,31 @@ function r17pRenderCurrentTeamPage(){
   }
 
   function r17fFloorTeams(teams,floor){
+    /* V3-22: 같은 조 안에서 대원별 층이 달라도 그 대원을 실제 층에 배치한다.
+       '위치 분산'이라는 조 합산값 때문에 층 현황에서 빠지지 않도록 층별 조 조각을 만든다. */
     const target=r17fPhysicalFloorKey(floor);
     if(!target)return [];
-    return (Array.isArray(teams)?teams:[]).filter(t=>{
-      if(t&&t.dispersed)return false;
-      return r17fPhysicalFloorKey(t&&t.floor)===target;
+    const out=[];
+    (Array.isArray(teams)?teams:[]).forEach(t=>{
+      const all=Array.isArray(t&&t.members)?t.members:[];
+      const members=all.filter(m=>r17fPhysicalFloorKey(m&&m.floor)===target);
+      if(!members.length){
+        if(!all.length && r17fPhysicalFloorKey(t&&t.floor)===target)out.push(t);
+        return;
+      }
+      const unique=(key,fallback)=>[...new Set(members.map(m=>String(m&&m[key]||fallback)))];
+      const dirs=unique('direction','미지정');
+      const details=[...new Set(members.map(m=>detail(m&&m.detail)))];
+      out.push(Object.assign({},t,{
+        count:members.length,
+        members:members,
+        floor:target,
+        direction:dirs.length===1?dirs[0]:'방면 혼재',
+        detail:details.length===1?details[0]:'세부장소 혼재',
+        dispersed:false
+      }));
     });
+    return out;
   }
 
   function r17fRenderFloorOnlyBoard(){
