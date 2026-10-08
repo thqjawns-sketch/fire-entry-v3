@@ -2301,11 +2301,49 @@ function v2AggregateExited(rows){
 let v249L38WritePending=0;
 const V249L38_RETRY_DELAYS=[0,1200,2500];
 
+/* V3-26 POST 지연 진단 전용
+   - 동작/재시도/타임아웃 정책은 변경하지 않음
+   - batchEntry/batchExit POST 중 함께 시작된 API GET과 POST 시도시간만 기록 */
+let V326_POST_DIAG_ACTIVE=null;
+let V326_POST_DIAG_LAST=null;
+
+function v326DiagStart(params){
+  const action=String(params && params.get ? (params.get("action")||"") : "");
+  if(action!=="batchEntry" && action!=="batchExit") return null;
+  const d={
+    action:action,
+    started:performance.now(),
+    postAttempts:[],
+    concurrentGets:[],
+    verifyCount:0,
+    verifyMs:0
+  };
+  V326_POST_DIAG_ACTIVE=d;
+  return d;
+}
+function v326DiagGet(label,url){
+  const d=V326_POST_DIAG_ACTIVE;
+  if(!d) return;
+  d.concurrentGets.push({
+    label:String(label||"GET"),
+    url:String(url||""),
+    atMs:Math.round(performance.now()-d.started)
+  });
+}
+function v326DiagFinish(d){
+  if(!d) return;
+  d.totalMs=Math.round(performance.now()-d.started);
+  V326_POST_DIAG_LAST=d;
+  if(V326_POST_DIAG_ACTIVE===d) V326_POST_DIAG_ACTIVE=null;
+}
+
+
 function v249L38Sleep(ms){
   return new Promise(resolve=>setTimeout(resolve,ms));
 }
 
 async function v249L38NativeJson(url,init,label){
+  v326DiagGet(label,url);
   let lastError=null;
   for(let attempt=0;attempt<V249L38_RETRY_DELAYS.length;attempt++){
     if(attempt>0) await v249L38Sleep(V249L38_RETRY_DELAYS[attempt]);
@@ -2331,6 +2369,9 @@ function v249L38ParseMemberIds(params){
 }
 
 async function v249L38VerifyWrite(params){
+  const v326VerifyDiag=V326_POST_DIAG_ACTIVE;
+  const v326VerifyStarted=performance.now();
+  if(v326VerifyDiag) v326VerifyDiag.verifyCount++;
   const action=String(params.get("action")||"");
   if(action!=="batchEntry" && action!=="batchExit") return null;
 
@@ -2375,6 +2416,7 @@ async function v249L38VerifyWrite(params){
 }
 
 async function v2CallPost(params){
+  const v326Diag=v326DiagStart(params);
   v249L38WritePending++;
   let lastError=null;
   try{
@@ -2382,7 +2424,18 @@ async function v2CallPost(params){
       if(attempt>0) await v249L38Sleep(V249L38_RETRY_DELAYS[attempt]);
       try{
         const cloned=new URLSearchParams(params.toString());
-        const res=await V2_NATIVE_FETCH(API,{method:"POST",body:cloned,cache:"no-store"});
+        const v326AttemptStarted=performance.now();
+        let res;
+        try{
+          res=await V2_NATIVE_FETCH(API,{method:"POST",body:cloned,cache:"no-store"});
+        }finally{
+          if(v326Diag){
+            v326Diag.postAttempts.push({
+              attempt:attempt+1,
+              ms:Math.round(performance.now()-v326AttemptStarted)
+            });
+          }
+        }
         if(!res || !res.ok) throw new Error("서버 응답 오류"+(res?" ("+res.status+")":""));
         const d=await res.json();
         return d;
@@ -2392,12 +2445,15 @@ async function v2CallPost(params){
 
         /* 응답만 유실된 경우 바로 다시 POST하면 중복 기록 위험이 있으므로
            현재상태를 먼저 확인하고, 이미 반영되었으면 성공으로 종료한다. */
+        const v326VerifyWaitStarted=performance.now();
         const verified=await v249L38VerifyWrite(params);
+        if(v326Diag) v326Diag.verifyMs += Math.round(performance.now()-v326VerifyWaitStarted);
         if(verified) return verified;
       }
     }
     throw lastError||new Error("동기화 실패");
   }finally{
+    v326DiagFinish(v326Diag);
     v249L38WritePending=Math.max(0,v249L38WritePending-1);
   }
 }
@@ -5294,11 +5350,18 @@ async function batchEntryMembers(){
       }
       const serverMs=(data&&data.timing)?Number(data.timing.totalMs||0):0;
       const gapMs=Math.max(0,v249L29FetchMs-serverMs);
+      const pd=V326_POST_DIAG_LAST;
+      const attempts=(pd&&pd.postAttempts||[]).map(x=>"#"+x.attempt+" "+(x.ms/1000).toFixed(1)+"초").join(", ")||"-";
+      const getLabels=(pd&&pd.concurrentGets||[]).map(x=>x.label).join(", ")||"-";
       diag.textContent=
         "진단 · 서버 "+(serverMs/1000).toFixed(1)+"초 / POST 응답 "+
         (v249L29FetchMs/1000).toFixed(1)+"초 / 응답차이 "+
         (gapMs/1000).toFixed(1)+"초 / 전체 "+
-        (v249L29TotalMs/1000).toFixed(1)+"초";
+        (v249L29TotalMs/1000).toFixed(1)+"초"+
+        " / POST시도 "+attempts+
+        " / 동시GET "+(pd?pd.concurrentGets.length:0)+"건("+getLabels+")"+
+        " / 저장확인 "+(pd?pd.verifyCount:0)+"회"+
+        (pd&&pd.verifyMs ? " "+(pd.verifyMs/1000).toFixed(1)+"초" : "");
     }catch(diagErr){
       console.warn("조 투입 진단표시 실패",diagErr);
     }
