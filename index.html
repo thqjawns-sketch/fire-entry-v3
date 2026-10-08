@@ -11398,73 +11398,30 @@ function r17pRenderCurrentTeamPage(){
 .v325RecentDetailButtons{display:flex;gap:6px;flex-wrap:wrap}
 .v325RecentDetailBtn{width:auto!important;margin:0!important;padding:7px 10px!important;border:1px solid #b8c7d8!important;border-radius:9px!important;background:#f4f8fc!important;color:#173d67!important;font-size:13px!important;font-weight:900!important}
 
-/* V3-26: 3페이지 자체 fixed/overflow:hidden 구조는 유지.
-   휴대폰/태블릿 세로에서는 내부 전용 viewport만 좌우 스크롤을 담당한다. */
+/* V3-26: 3페이지 DOM/JS는 그대로 유지.
+   휴대폰·세로 태블릿에서 층별현황 section 내부만 가로 스크롤 허용. */
 @media (max-width:1180px){
   #teamBoardPageV29.r17pBoard{
     overflow:hidden!important;
     overscroll-behavior:none!important;
   }
-  #teamBoardPageV29 .v326PanViewport{
-    position:absolute!important;
-    inset:0!important;
-    width:100%!important;
-    height:100%!important;
+
+  #teamBoardPageV29.r17pFloorMode #r17pLocationSection{
     overflow-x:auto!important;
     overflow-y:hidden!important;
     -webkit-overflow-scrolling:touch;
     overscroll-behavior-x:contain;
     touch-action:pan-x!important;
   }
-  #teamBoardPageV29 .v326PanCanvas{
-    width:1440px!important;
-    min-width:1440px!important;
-    max-width:1440px!important;
-    height:100dvh!important;
-    min-height:100dvh!important;
-    box-sizing:border-box!important;
-  }
-  #teamBoardPageV29 .v326PanCanvas > .r17pHeader,
-  #teamBoardPageV29 .v326PanCanvas > .r17pMain{
-    width:1440px!important;
-    min-width:1440px!important;
-    max-width:1440px!important;
+
+  #teamBoardPageV29.r17pFloorMode .r17pLocationGrid{
+    width:1180px!important;
+    min-width:1180px!important;
+    max-width:none!important;
+    grid-template-columns:minmax(0,15fr) minmax(0,30fr) minmax(0,55fr)!important;
   }
 }
 </style>
-
-<script id="v3-26-page3-mobile-pan">
-(function(){
-  function ensurePage3Pan(){
-    if(!window.matchMedia || !window.matchMedia('(max-width:1180px)').matches) return;
-    const page=document.getElementById('teamBoardPageV29');
-    if(!page || page.querySelector(':scope > .v326PanViewport')) return;
-
-    const header=page.querySelector(':scope > .r17pHeader');
-    const main=page.querySelector(':scope > .r17pMain');
-    if(!header || !main) return;
-
-    const viewport=document.createElement('div');
-    viewport.className='v326PanViewport';
-    viewport.setAttribute('aria-label','3페이지 좌우 이동 영역');
-
-    const canvas=document.createElement('div');
-    canvas.className='v326PanCanvas';
-
-    page.insertBefore(viewport, header);
-    viewport.appendChild(canvas);
-    canvas.appendChild(header);
-    canvas.appendChild(main);
-  }
-
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded', ensurePage3Pan, {once:true});
-  }else{
-    ensurePage3Pan();
-  }
-  window.addEventListener('resize', ensurePage3Pan, {passive:true});
-})();
-</script>
 
 
 <script id="v3-21-pwa-register">
