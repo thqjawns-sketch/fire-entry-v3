@@ -2497,6 +2497,7 @@ window.fetch = async function(input, init){
         {cache:"no-store"},
         "현재대원 동기화"
       );
+      if(typeof v3ApplyTacticalServerMap==="function") v3ApplyTacticalServerMap(siteId,d.tacticalFloors||{});
       const active=(d.members||[])
         .filter(m=>m.status==="활동중")
         .map(v2OldInsideMember);
@@ -2510,6 +2511,7 @@ window.fetch = async function(input, init){
         {cache:"no-store"},
         "현장현황 동기화"
       );
+      if(typeof v3ApplyTacticalServerMap==="function") v3ApplyTacticalServerMap(siteId,d.tacticalFloors||{});
 
       const inside=(d.insideMembers||[]).map(v2OldInsideMember);
 
@@ -8797,15 +8799,46 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(refresh,0));setInter
 
 <script id="v3-tactical-floor-core">
 /* V3-6: 실제 활동층별 전술층 상태 */
-function v3TacticalSiteKey(){
-  const site=(document.getElementById('dashboardSiteName')?.textContent||'').trim()||'default';
-  return 'V3_TACTICAL_FLOORS::'+site;
+function v3TacticalCurrentSiteId(){
+  try{
+    const site=(document.getElementById('site')?.value||'').trim();
+    if(!site)return '';
+    return (typeof v2SiteId==='function')?String(v2SiteId(site)||'').trim():site;
+  }catch(e){return '';}
+}
+function v3TacticalSiteKey(siteId){
+  return 'V3_TACTICAL_FLOORS_SERVER_CACHE::'+String(siteId||v3TacticalCurrentSiteId()||'default');
+}
+window.__v3TacticalFloorsBySite=window.__v3TacticalFloorsBySite||{};
+function v3ApplyTacticalServerMap(siteId,map){
+  siteId=String(siteId||'').trim();
+  if(!siteId)return;
+  const cleanMap=(map&&typeof map==='object'&&!Array.isArray(map))?map:{};
+  window.__v3TacticalFloorsBySite[siteId]=Object.assign({},cleanMap);
+  try{localStorage.setItem(v3TacticalSiteKey(siteId),JSON.stringify(cleanMap));}catch(e){}
 }
 function v3LoadTacticalFloors(){
-  try{return JSON.parse(localStorage.getItem(v3TacticalSiteKey())||'{}')||{};}catch(e){return {};}
+  const siteId=v3TacticalCurrentSiteId();
+  if(!siteId)return {};
+  if(window.__v3TacticalFloorsBySite[siteId])return window.__v3TacticalFloorsBySite[siteId];
+  try{
+    const cached=JSON.parse(localStorage.getItem(v3TacticalSiteKey(siteId))||'{}')||{};
+    window.__v3TacticalFloorsBySite[siteId]=cached;
+    return cached;
+  }catch(e){return {};}
 }
-function v3SaveTacticalFloors(map){
-  try{localStorage.setItem(v3TacticalSiteKey(),JSON.stringify(map||{}));}catch(e){}
+async function v3SaveTacticalFloorServer(floor,tactical){
+  const siteId=v3TacticalCurrentSiteId();
+  if(!siteId)throw new Error('현장을 선택해주세요.');
+  const p=new URLSearchParams();
+  p.set('action','setTacticalFloor');
+  p.set('siteId',siteId);
+  p.set('floor',String(floor||''));
+  p.set('tactical',String(tactical||''));
+  const d=await v2CallPost(p);
+  if(!(d&&d.ok))throw new Error((d&&d.error)||'전술층 저장 실패');
+  v3ApplyTacticalServerMap(siteId,d.tacticalFloors||{});
+  return d;
 }
 /* V3-26 전술층 저장구조 정리:
    기존 버전에서 기기에 남아 있던 실제층→전술층 매핑을 최초 1회만 전부 폐기한다.
@@ -8878,6 +8911,9 @@ function v3BuildingDisplayFloors(activeFloors,maxSlots=7){
 }
 function v3RefreshAfterTacticalChange(){
   try{
+    if(typeof v16TRenderInsideFromCache==='function')v16TRenderInsideFromCache();
+  }catch(e){}
+  try{
     if(typeof drawDashboardInside==='function')drawDashboardInside(window.__dashboardInsideMembers||[]);
   }catch(e){}
   try{
@@ -8910,12 +8946,17 @@ function v3OpenTacticalFloorDialog(floor){
     ov.querySelectorAll('.v3TacticalChoice').forEach(x=>x.classList.toggle('active',x===b));
   }));
   ov.querySelector('.v3TacCancel').onclick=()=>ov.remove();
-  ov.querySelector('.v3TacApply').onclick=()=>{
-    const map=v3LoadTacticalFloors();
-    if(selected)map[floor]=selected; else delete map[floor];
-    v3SaveTacticalFloors(map);
-    ov.remove();
-    v3RefreshAfterTacticalChange();
+  ov.querySelector('.v3TacApply').onclick=async()=>{
+    const btn=ov.querySelector('.v3TacApply');
+    if(btn){btn.disabled=true;btn.textContent='저장중...';}
+    try{
+      await v3SaveTacticalFloorServer(floor,selected);
+      ov.remove();
+      v3RefreshAfterTacticalChange();
+    }catch(e){
+      if(btn){btn.disabled=false;btn.textContent='적용';}
+      alert('전술층 저장 실패: '+(e&&e.message?e.message:String(e)));
+    }
   };
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
 }
