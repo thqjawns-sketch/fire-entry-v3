@@ -9325,12 +9325,20 @@ function r17pRenderCurrentTeamPage(){
       const members=Array.isArray(t&&t.members)?t.members:[];
       const here=members.filter(m=>r17fPhysicalFloorKey(m&&m.floor)===target);
       if(here.length){
+        const dirs=[...new Set(here.map(m=>String(m&&m.direction||'미지정').trim()||'미지정'))];
+        const details=[...new Set(here.map(m=>{
+          const v=String(m&&m.detail||'').trim();
+          return (!v||v==='미지정'||/세부\s*장소\s*미지정/i.test(v))?'-':v;
+        }))];
         out.push(Object.assign({},t,{
           floor:target,
           members:here,
           count:here.length,
           names:here.map(m=>v29CleanName(m)).filter(Boolean),
-          dispersed:false
+          direction:dirs.length===1?dirs[0]:'위치 분산',
+          detail:details.length===1?details[0]:'위치 분산',
+          dispersed:false,
+          sourceTeamDispersed:!!(t&&t.dispersed)
         }));
       }else if(!members.length && !(t&&t.dispersed) && r17fPhysicalFloorKey(t&&t.floor)===target){
         out.push(t);
@@ -9414,6 +9422,20 @@ function r17pRenderCurrentTeamPage(){
       const org=orgOf(m);
       const name=nameOf(m);
       return (org?org+' ':'')+(name||'-');
+    };
+
+    /* V3-30: 조 소속은 하나로 유지하고, 전체 보기에서만 대원별 실제층 분포를 요약한다. */
+    const teamFloorParts=t=>{
+      const counts={};
+      (Array.isArray(t&&t.members)?t.members:[]).forEach(m=>{
+        const f=r17fPhysicalFloorKey(m&&m.floor)||'위치미지정';
+        counts[f]=(counts[f]||0)+1;
+      });
+      const floors=Object.keys(counts).sort((a,b)=>{
+        if(a==='위치미지정')return 1;if(b==='위치미지정')return -1;
+        return v3SortPhysicalFloors(a,b);
+      });
+      return floors.map(f=>({floor:f,count:counts[f]}));
     };
 
     const teamSafety=t=>{
@@ -9505,6 +9527,12 @@ function r17pRenderCurrentTeamPage(){
         const entryTimes=members.map(entryTextOf).filter(x=>x&&x!=='-');
         const entryText=entryTimes.length ? entryTimes[0] : '-';
         const floorKey=r17fPhysicalFloorKey(t.floor)||String(t.floor||'미지정').trim()||'미지정';
+        const floorParts=teamFloorParts(t);
+        const splitFloorHtml=(r17fSelectedFloor==='전체' && floorParts.length>1)
+          ? '<div class="r17fSplitFloorSummary"><span class="r17fSplitWarn">⚠ 위치 분산</span>'+floorParts.map(x=>
+              '<span class="r17fSplitPart">'+E(x.floor)+' '+x.count+'명</span>'
+            ).join('')+'</div>'
+          : '';
 
         return '<div class="r17fActivityTeamCard">'+
           '<div class="r17fActivityTeamTop">'+
@@ -9514,6 +9542,7 @@ function r17pRenderCurrentTeamPage(){
             '</div>'+
             '<strong>'+cnt+'명</strong>'+
           '</div>'+
+          splitFloorHtml+
           (people.length?'<div class="r17fActivityPeople">'+people.map(E).join(' · ')+'</div>':'')+
           '<div class="r17fActivityDetail">세부장소 : '+E(det)+'</div>'+
           '<div class="r17fActivityTime">진입 : '+E(entryText)+' <span>·</span> 체류 : '+maxMin+'분</div>'+
@@ -11602,5 +11631,11 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
+
+<style id="v330-split-team-floor-style">
+#teamBoardPageV29 .r17fSplitFloorSummary{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:7px 0 5px}
+#teamBoardPageV29 .r17fSplitWarn{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;border:1px solid #e3a008;background:#fff8df;color:#8a5a00;font-size:12px;font-weight:950;white-space:nowrap}
+#teamBoardPageV29 .r17fSplitPart{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;border:1px solid #b8c8d8;background:#f5f8fb;color:#173d67;font-size:12px;font-weight:900;white-space:nowrap}
+</style>
 </body>
 </html>
