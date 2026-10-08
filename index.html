@@ -6586,7 +6586,11 @@ function startDashboardAutoRefresh(){
           !v249R8WriteBusy()
         ){
 
+          /* V3-26 1차 성능개선:
+             10초 자동갱신은 활동이력 전체를 읽는 dashboard 대신
+             현재상태(current)만 조회한다. */
           loadDashboard(
+            true,
             true
           );
 
@@ -6728,6 +6732,53 @@ async function v218FetchDashboard(site,force){
   return data;
 }
 
+/* V3-26 1차 성능개선
+   10초 자동갱신 전용 경량 조회.
+   현재 활동대원만 current에서 갱신하고,
+   현장 참여/철수완료/철수대원 자료는 마지막 전체 dashboard 값을 유지한다. */
+async function v326FetchCurrentDashboard(site){
+  const now=Date.now();
+  const response=await fetch(
+    API+"?action=inside&site="+encodeURIComponent(site)+"&t="+now,
+    {cache:"no-store"}
+  );
+  const data=await response.json();
+  if(!data || !data.success){
+    return data;
+  }
+
+  const previous =
+    (window.__v29Dashboard && typeof window.__v29Dashboard==="object")
+      ? window.__v29Dashboard
+      : ((v218DashboardCache && v218DashboardCache.dashboard) || {});
+
+  const previousInside=Array.isArray(previous.insideMembers)
+    ? previous.insideMembers
+    : [];
+  const previousById=new Map(
+    previousInside.map(m=>[String(m&&m.memberId||""),m||{}])
+  );
+
+  const inside=(data.members||[]).map(m=>{
+    const old=previousById.get(String(m&&m.memberId||""))||{};
+    return Object.assign({},old,m);
+  });
+
+  return {
+    success:true,
+    dashboard:{
+      insideCount:inside.length,
+      uniqueMemberCount:Number(previous.uniqueMemberCount)||inside.length,
+      exitedCount:Number(previous.exitedCount)||0,
+      insideMembers:inside,
+      exitedMembers:Array.isArray(previous.exitedMembers)
+        ? previous.exitedMembers
+        : (window.__dashboardExitedMembers||[])
+    },
+    currentOnly:true
+  };
+}
+
 function v251R16EStructureSignature(list){
   try{
     return JSON.stringify((list||[]).map(function(m){
@@ -6741,7 +6792,8 @@ function v251R16EStructureSignature(list){
 }
 
 async function loadDashboard(
-  isAutoRefresh = false
+  isAutoRefresh = false,
+  currentOnly = false
 ){
 
   /* 저장 처리 중 자동갱신이 동시에 서버를 호출하지 않도록 보류 */
@@ -6811,7 +6863,9 @@ async function loadDashboard(
 
   try{
 
-    const data = await v218FetchDashboard(site,!isAutoRefresh);
+    const data = currentOnly
+      ? await v326FetchCurrentDashboard(site)
+      : await v218FetchDashboard(site,!isAutoRefresh);
 
 
     if(
