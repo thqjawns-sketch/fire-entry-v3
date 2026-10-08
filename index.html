@@ -2305,17 +2305,49 @@ function v249L38Sleep(ms){
   return new Promise(resolve=>setTimeout(resolve,ms));
 }
 
+/* V3-26 2차 성능개선
+   Apps Script GET 한 번이 장시간 대기 상태로 남지 않도록
+   각 시도마다 8초 실제 타임아웃 후 AbortController로 요청 자체를 취소한다.
+   기존 최대 3회 재시도와 재시도 간격은 그대로 유지한다. */
+const V326_GET_ATTEMPT_TIMEOUT_MS=8000;
+
 async function v249L38NativeJson(url,init,label){
   let lastError=null;
   for(let attempt=0;attempt<V249L38_RETRY_DELAYS.length;attempt++){
     if(attempt>0) await v249L38Sleep(V249L38_RETRY_DELAYS[attempt]);
+
+    const controller=(typeof AbortController!=="undefined")?new AbortController():null;
+    const requestInit=Object.assign({},init||{});
+    if(controller) requestInit.signal=controller.signal;
+
+    let timeoutId=null;
     try{
-      const res=await V2_NATIVE_FETCH(url,init);
+      if(controller){
+        timeoutId=setTimeout(()=>controller.abort(),V326_GET_ATTEMPT_TIMEOUT_MS);
+      }
+
+      const res=controller
+        ? await V2_NATIVE_FETCH(url,requestInit)
+        : await Promise.race([
+            V2_NATIVE_FETCH(url,requestInit),
+            new Promise((_,reject)=>setTimeout(
+              ()=>reject(new Error("GET_ATTEMPT_TIMEOUT")),
+              V326_GET_ATTEMPT_TIMEOUT_MS
+            ))
+          ]);
+
       if(!res || !res.ok) throw new Error((label||"동기화")+" 응답 오류"+(res?" ("+res.status+")":""));
       return await res.json();
     }catch(error){
-      lastError=error;
-      console.warn((label||"동기화")+" 재시도 "+(attempt+1)+"/"+V249L38_RETRY_DELAYS.length,error);
+      const timedOut=
+        (controller && error && error.name==="AbortError") ||
+        (error && error.message==="GET_ATTEMPT_TIMEOUT");
+      lastError=timedOut
+        ? new Error((label||"동기화")+" 응답시간 초과")
+        : error;
+      console.warn((label||"동기화")+" 재시도 "+(attempt+1)+"/"+V249L38_RETRY_DELAYS.length,lastError);
+    }finally{
+      if(timeoutId) clearTimeout(timeoutId);
     }
   }
   throw lastError||new Error((label||"동기화")+" 실패");
