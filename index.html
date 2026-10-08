@@ -2497,11 +2497,10 @@ window.fetch = async function(input, init){
         {cache:"no-store"},
         "현재대원 동기화"
       );
-      if(typeof v3ApplyTacticalServerMap==="function") v3ApplyTacticalServerMap(siteId,d.tacticalFloors||{});
       const active=(d.members||[])
         .filter(m=>m.status==="활동중")
         .map(v2OldInsideMember);
-      return v2JsonResponse({success:!!d.ok,members:active,message:d.error||""});
+      return v2JsonResponse({success:!!d.ok,members:active,tacticalFloors:d.tacticalFloors||{},siteId:siteId,message:d.error||""});
     }
 
     if(action==="dashboard"){
@@ -2511,7 +2510,6 @@ window.fetch = async function(input, init){
         {cache:"no-store"},
         "현장현황 동기화"
       );
-      if(typeof v3ApplyTacticalServerMap==="function") v3ApplyTacticalServerMap(siteId,d.tacticalFloors||{});
 
       const inside=(d.insideMembers||[]).map(v2OldInsideMember);
 
@@ -2530,6 +2528,8 @@ window.fetch = async function(input, init){
 
       return v2JsonResponse({
         success:!!d.ok,
+        tacticalFloors:d.tacticalFloors||{},
+        siteId:siteId,
         dashboard:{
           insideCount:Number(d.insideCount)||inside.length,
           uniqueMemberCount:Number(d.participantCount)||0,
@@ -5782,6 +5782,9 @@ async function loadInsideMembers(isAutoRefresh = false){
 
     }
 
+    /* V3-28: 현재대원 응답에 함께 실려온 시트 전술층을 모든 단말의 공통 기준으로 적용 */
+    if(typeof v3ApplyTacticalSheetMap==='function') v3ApplyTacticalSheetMap(data.tacticalFloors||{});
+
     /* R16U: 현재 활동대원 원본은 하나만 유지한다.
        1페이지 조회 결과도 2페이지 기준 배열에 넣고, 구형 참조는 같은 배열을 가리키는 alias로만 유지한다. */
     window.__dashboardInsideMembers = Array.isArray(data.members) ? data.members : [];
@@ -6920,6 +6923,9 @@ async function loadDashboard(
 
     const dashboard =
       data.dashboard;
+
+    /* V3-28: dashboard 응답에 함께 실려온 시트 전술층 적용 */
+    if(typeof v3ApplyTacticalSheetMap==='function') v3ApplyTacticalSheetMap(data.tacticalFloors||{});
 
     /* R16G: 지휘상황판 마지막 서버 성공시각 */
     window.__v29LastSuccessAt = Date.now();
@@ -8799,45 +8805,23 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(refresh,0));setInter
 
 <script id="v3-tactical-floor-core">
 /* V3-6: 실제 활동층별 전술층 상태 */
-function v3TacticalCurrentSiteId(){
-  try{
-    const site=(document.getElementById('site')?.value||'').trim();
-    if(!site)return '';
-    return (typeof v2SiteId==='function')?String(v2SiteId(site)||'').trim():site;
-  }catch(e){return '';}
-}
-function v3TacticalSiteKey(siteId){
-  return 'V3_TACTICAL_FLOORS_SERVER_CACHE::'+String(siteId||v3TacticalCurrentSiteId()||'default');
-}
-window.__v3TacticalFloorsBySite=window.__v3TacticalFloorsBySite||{};
-function v3ApplyTacticalServerMap(siteId,map){
-  siteId=String(siteId||'').trim();
-  if(!siteId)return;
-  const cleanMap=(map&&typeof map==='object'&&!Array.isArray(map))?map:{};
-  window.__v3TacticalFloorsBySite[siteId]=Object.assign({},cleanMap);
-  try{localStorage.setItem(v3TacticalSiteKey(siteId),JSON.stringify(cleanMap));}catch(e){}
+window.__v3TacticalFloorsSheet = window.__v3TacticalFloorsSheet || {};
+function v3ApplyTacticalSheetMap(map){
+  window.__v3TacticalFloorsSheet = (map&&typeof map==='object'&&!Array.isArray(map)) ? Object.assign({},map) : {};
 }
 function v3LoadTacticalFloors(){
-  const siteId=v3TacticalCurrentSiteId();
-  if(!siteId)return {};
-  if(window.__v3TacticalFloorsBySite[siteId])return window.__v3TacticalFloorsBySite[siteId];
-  try{
-    const cached=JSON.parse(localStorage.getItem(v3TacticalSiteKey(siteId))||'{}')||{};
-    window.__v3TacticalFloorsBySite[siteId]=cached;
-    return cached;
-  }catch(e){return {};}
+  return window.__v3TacticalFloorsSheet || {};
 }
 async function v3SaveTacticalFloorServer(floor,tactical){
-  const siteId=v3TacticalCurrentSiteId();
+  const site=(document.getElementById('site')?.value||'').trim();
+  const siteId=(typeof v2SiteId==='function')?String(v2SiteId(site)||'').trim():'';
   if(!siteId)throw new Error('현장을 선택해주세요.');
   const p=new URLSearchParams();
-  p.set('action','setTacticalFloor');
-  p.set('siteId',siteId);
-  p.set('floor',String(floor||''));
-  p.set('tactical',String(tactical||''));
+  p.set('action','setTacticalFloor'); p.set('siteId',siteId);
+  p.set('floor',String(floor||'')); p.set('tactical',String(tactical||''));
   const d=await v2CallPost(p);
   if(!(d&&d.ok))throw new Error((d&&d.error)||'전술층 저장 실패');
-  v3ApplyTacticalServerMap(siteId,d.tacticalFloors||{});
+  v3ApplyTacticalSheetMap(d.tacticalFloors||{});
   return d;
 }
 /* V3-26 전술층 저장구조 정리:
@@ -8911,13 +8895,13 @@ function v3BuildingDisplayFloors(activeFloors,maxSlots=7){
 }
 function v3RefreshAfterTacticalChange(){
   try{
-    if(typeof v16TRenderInsideFromCache==='function')v16TRenderInsideFromCache();
-  }catch(e){}
-  try{
     if(typeof drawDashboardInside==='function')drawDashboardInside(window.__dashboardInsideMembers||[]);
   }catch(e){}
   try{
     if(typeof drawTeamBoardV29==='function')drawTeamBoardV29();
+  }catch(e){}
+  try{
+    if(typeof loadInsideMembers==='function')void loadInsideMembers(true);
   }catch(e){}
 }
 function v3OpenTacticalFloorDialog(floor){
