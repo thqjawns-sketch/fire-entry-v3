@@ -1378,13 +1378,6 @@ button:disabled{
 .v249l34SiteItem.selected{border-color:#111;background:#f1f3f5}
 .v249l34SiteItem .sub{display:block;margin-top:4px;font-size:12px;font-weight:500;color:#667085}
 
-/* 지휘관/안전점검관 최근사용 3명 */
-.officerRecent3{display:flex;align-items:center;gap:7px;margin-top:8px;min-width:0}
-.officerRecent3:empty{display:none}
-.officerRecent3Label{flex:0 0 auto;font-size:11px;color:#64748b;white-space:nowrap}
-.officerRecent3Btn{flex:1 1 0;min-width:0;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;padding:8px 6px;font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.officerRecent3Btn:active{background:#e0f2fe;border-color:#7dd3fc;color:#075985}
-@media(max-width:560px){.officerRecent3{gap:5px}.officerRecent3Btn{font-size:11px;padding:7px 4px}}
 
 /* 2페이지 현황 새로고침: 아이콘 하나 + 실행 중 회전 */
 #dashboardRefreshBtn .dashboardRefreshIcon{display:inline-block;font-size:20px;line-height:1}
@@ -1666,15 +1659,6 @@ window.V17_STAY_POLICY=Object.freeze({
 </div>
 
 
-
-<label>지휘관 또는 안전점검관</label>
-
-<input
-  type="text"
-  id="officer"
-  placeholder="지휘관 또는 안전점검관 성명"
->
-<div id="officerRecent3" class="officerRecent3" aria-label="지휘관 또는 안전점검관 최근사용"></div>
 </div>
 
 <button type="button" class="dashboardBtn v17SafetyManageBtn" onclick="openDashboard()">
@@ -2828,7 +2812,7 @@ function v249L31ManagerPin(){
 }
 async function v249L31CreateSite(){
  const siteName=(document.getElementById("v249l31SiteNameInput")?.value||"").trim();if(!siteName){alert("현장명을 입력하세요.");return;}const pin="1190";if(!confirm(siteName+"\n\n새 화재현장을 생성하시겠습니까?"))return;
- const p=new URLSearchParams();p.set("action","createSite");p.set("siteName",siteName);p.set("managerPin",pin);p.set("safetyOfficer",(document.getElementById("officer").value||"").trim());
+ const p=new URLSearchParams();p.set("action","createSite");p.set("siteName",siteName);p.set("managerPin",pin);p.set("safetyOfficer","");
  return v2CallPost(p).then(d=>{if(!d.ok)throw new Error(d.error||d.message||"현장 생성 실패");if(d.siteId)V2_SITE_ID_BY_NAME.set(String(siteName),String(d.siteId));const siteEl=document.getElementById("site");if(siteEl&&![...siteEl.options].some(o=>o.value===siteName)){const op=document.createElement("option");op.value=siteName;op.textContent=siteName;siteEl.appendChild(op);}if(siteEl)siteEl.value=siteName;v249L31CloseSiteManager();alert("🔥 "+siteName+"\n현장을 생성했습니다.\n첫 조는 1조 / 1차 활동부터 시작합니다.");if(typeof siteChanged==="function")Promise.resolve(siteChanged()).catch(e=>console.warn("새 현장 초기화 지연",e));}).catch(e=>alert(e&&e.message?e.message:"현장 생성 중 오류가 발생했습니다."));
 }
 async function v249L34LoadActiveSites(){
@@ -3024,7 +3008,6 @@ async function v249L31OpenReport(siteIdOverride,siteNameOverride){
       "<h1>화재현장 진·출입 활동 종합보고서</h1>"+
       "<p>"+
         "<b>현장명</b> "+v249L31Esc(d.site.siteName||siteName||"-")+"<br>"+
-        "<b>지휘관 또는 안전점검관</b> "+v249L31Esc(officer)+"<br>"+
         "<b>현장상태</b> "+v249L31Esc(d.site.status||"-")+"<br>"+
         "<b>현장 생성</b> "+v249L31Esc(d.site.createdAt||"-")+"<br>"+
         "<b>현장 종료</b> "+v249L31Esc(d.site.closedAt||"-")+"<br>"+
@@ -5138,13 +5121,7 @@ async function batchEntryMembers(){
       .value;
 
 
-  const officer =
-    document
-      .getElementById(
-        "officer"
-      )
-      .value
-      .trim();
+  const officer = "";
 
 
   if(
@@ -5159,18 +5136,6 @@ async function batchEntryMembers(){
 
   }
 
-
-  if(
-    !officer
-  ){
-
-    alert(
-      "지휘관 또는 안전점검관 성명을 입력하세요."
-    );
-
-    return;
-
-  }
 
 
   if(
@@ -5228,7 +5193,6 @@ async function batchEntryMembers(){
   let teamName = resolvedTeam.teamName;
   let activityNo = resolvedTeam.activityNo;
 
-  rememberOfficerRecent3(officer);
   if(
     !confirm(
       teamName + " · " + activityNo + "차 활동 · " + selectedTeamMembers.length + "명을 투입하시겠습니까?\n" +
@@ -5982,14 +5946,10 @@ async function toggleExitScanner(){
 
 async function startExitScanner(){
   const site=(document.getElementById("site")||{}).value||"";
-  const officer=((document.getElementById("officer")||{}).value||"").trim();
+  const officer="";
 
   if(!site){
     alert("화재현장을 선택하세요.");
-    return;
-  }
-  if(!officer){
-    alert("지휘관 또는 안전점검관 성명을 입력하세요.");
     return;
   }
 
@@ -6205,13 +6165,7 @@ async function batchExitMembers(){
       .value;
 
 
-  const officer =
-    document
-      .getElementById(
-        "officer"
-      )
-      .value
-      .trim();
+  const officer = "";
 
 
   if(
@@ -6226,18 +6180,6 @@ async function batchExitMembers(){
 
   }
 
-
-  if(
-    !officer
-  ){
-
-    alert(
-      "지휘관 또는 안전점검관 성명을 입력하세요."
-    );
-
-    return;
-
-  }
 
 
   const checked =
@@ -8377,49 +8319,7 @@ async function post(action,ids,extra,btn){
 async function safety(ids){if(!ids||!ids.length)return;if(!confirm(ids.length+'명을 안전확인 완료 처리하시겠습니까?\n확인 후 10분 동안 빨간 깜빡임이 중지되고, 10분 후 재확인 대상이 됩니다.'))return;await post('setSafetyCheck',ids,{},null);}
 function recentSafety(m){const t=parseTime(m&&m.safetyCheckedAt);return Number.isFinite(t)&&Math.max(0,(Date.now()-t)/60000)<RECHECK;}
 function applyTeamSafetyButtons(){document.querySelectorAll('#dashboardInside .teamDividerV19').forEach(div=>{const team=div.dataset.team||'';const btn=div.querySelector('.dashboardTeamSafetyBtn');if(!btn)return;const ms=(window.__dashboardInsideMembers||[]).filter(m=>teamName(m)===team);const done=ms.length>0&&ms.every(recentSafety);btn.classList.toggle('isConfirmed',done);if(!btn.disabled){if(done){const remains=ms.map(m=>state(m).remain).filter(Number.isFinite);const r=remains.length?Math.min(...remains):10;btn.textContent='✓ 안전확인 · 재확인 '+r+'분';}else btn.textContent='🛡 조 안전확인';}});}
-/* V3-32: 조 안전확인 POST 응답이 10초를 넘겨도 서버 저장은 이미 끝났을 수 있다.
-   이 경우 누른 기기만 실패처럼 원복하지 않고, 진행 중인 쓰기가 끝난 뒤 dashboard를 재조회하여
-   해당 조 전원의 safetyCheckedAt을 서버값으로 확인한 후 버튼 상태를 확정한다. */
-async function v332WaitTeamSafetyConfirmed(team,memberIds,btn,oldText){
-  const wanted=new Set((memberIds||[]).map(x=>String(x)));
-  const started=Date.now();
-  if(btn){btn.disabled=true;btn.textContent='↻ 저장 확인중...';}
-  while(Date.now()-started<30000){
-    /* post()의 10초 UI 타임아웃 뒤에도 실제 v2CallPost가 진행 중일 수 있으므로
-       writeBusy가 풀리기 전에는 loadDashboard(false)를 호출하지 않는다. */
-    if(!(typeof v249R8WriteBusy==='function'&&v249R8WriteBusy())){
-      try{await loadDashboard(false);}catch(e){}
-      const latest=(window.__dashboardInsideMembers||[]).filter(m=>teamName(m)===team&&wanted.has(String(m.memberId)));
-      const confirmed=latest.length===wanted.size&&latest.length>0&&latest.every(recentSafety);
-      if(confirmed){
-        if(btn){btn.classList.add('isConfirmed');btn.disabled=false;}
-        applyTeamSafetyButtons();
-        return true;
-      }
-    }
-    await new Promise(r=>setTimeout(r,1200));
-  }
-  if(btn){btn.disabled=false;btn.textContent=oldText;}
-  applyTeamSafetyButtons();
-  return false;
-}
-window.v251TeamSafety=async function(team,btn){
-  const ms=(window.__dashboardInsideMembers||[]).filter(m=>teamName(m)===team);
-  if(!ms.length)return;
-  const ids=ms.map(m=>m.memberId);
-  const old=btn?btn.textContent:'🛡 조 안전확인';
-  if(btn){btn.disabled=true;btn.textContent='⏳ 처리중...';}
-  const d=await post('setSafetyCheck',ids,{},null);
-  if(d){
-    const now=new Date().toISOString();
-    ms.forEach(m=>{m.safetyCheckedAt=(d.succeeded||[]).find(x=>String(x.id)===String(m.memberId))?.checkedAt||now;});
-    if(btn){btn.classList.add('isConfirmed');btn.textContent='✓ 안전확인';btn.disabled=false;}
-    applyTeamSafetyButtons();
-    return;
-  }
-  /* 응답 지연/타임아웃이면 즉시 원복하거나 재클릭을 허용하지 않고 서버값을 확인한다. */
-  await v332WaitTeamSafetyConfirmed(team,ids,btn,old);
-};
+window.v251TeamSafety=async function(team,btn){const ms=(window.__dashboardInsideMembers||[]).filter(m=>teamName(m)===team);if(!ms.length)return;const old=btn?btn.textContent:'🛡 조 안전확인';if(btn){btn.disabled=true;btn.textContent='⏳ 처리중...';}const d=await post('setSafetyCheck',ms.map(m=>m.memberId),{},null);if(d){const now=new Date().toISOString();ms.forEach(m=>{m.safetyCheckedAt=(d.succeeded||[]).find(x=>String(x.id)===String(m.memberId))?.checkedAt||now;});if(btn){btn.classList.add('isConfirmed');btn.textContent='✓ 안전확인';}}else if(btn){btn.textContent=old;}if(btn)btn.disabled=false;applyTeamSafetyButtons();};
 function renderTargets(){const box=document.getElementById('v251SafetyTargets');if(box)box.remove();}
 function applyRows(){['dashboardInside','insideList'].forEach(rootId=>{const root=document.getElementById(rootId);if(!root)return;const source=(window.__dashboardInsideMembers||[]);root.querySelectorAll('.memberRow').forEach(row=>{const idEl=row.querySelector('.compactId');if(!idEl)return;const id=idEl.textContent.trim();const m=source.find(x=>String(x.memberId)===String(id));if(!m)return;const s=state(m);row.classList.remove('v251NeedsCheck','v251SafetyConfirmed','v251IsolationBlink');if(s.isolated)row.classList.add('v251IsolationBlink');else if(s.due)row.classList.add('v251NeedsCheck');else if(s.confirmed)row.classList.add('v251SafetyConfirmed');const elapsed=row.querySelector('.insideElapsed');if(elapsed)elapsed.textContent=(s.mins>=30?'🔴 ':'')+s.mins+'분 경과';const st=row.querySelector('.insideStatus');if(st){st.classList.remove('v251NeedsCheck','v251SafetyConfirmed','v251IsolationBlink');if(s.isolated)st.classList.add('v251IsolationBlink');else if(s.due)st.classList.add('v251NeedsCheck');else if(s.confirmed)st.classList.add('v251SafetyConfirmed');st.textContent=s.icon+' '+s.text;}});});}
 
@@ -10077,57 +9977,7 @@ function r17pRenderCurrentTeamPage(){
 })();
 </script>
 
-<script id="officer-recent3-module">
-/* 지휘관/안전점검관 최근사용: 최근 확정 사용 3명만 저장/선택 */
-(function(){
-  const KEY="fireOfficerRecent3";
-  function input(){ return document.getElementById("officer"); }
-  function load(){
-    try{
-      const a=JSON.parse(localStorage.getItem(KEY)||"[]");
-      return Array.isArray(a)?a.filter(Boolean).slice(0,3):[];
-    }catch(e){ return []; }
-  }
-  function save(name){
-    name=String(name||"").trim();
-    if(!name)return;
-    const a=load().filter(v=>v!==name);
-    a.unshift(name);
-    localStorage.setItem(KEY,JSON.stringify(a.slice(0,3)));
-    render();
-  }
-  function esc(v){
-    return String(v||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  }
-  function render(){
-    const box=document.getElementById("officerRecent3");
-    if(!box)return;
-    const a=load();
-    if(!a.length){box.innerHTML="";return;}
-    box.innerHTML='<span class="officerRecent3Label">최근사용</span>'+
-      a.map((name,i)=>'<button type="button" class="officerRecent3Btn" data-recent-index="'+i+'">'+esc(name)+'</button>').join("");
-    box.querySelectorAll(".officerRecent3Btn").forEach(btn=>{
-      btn.addEventListener("click",function(){
-        const el=input(), name=load()[Number(this.dataset.recentIndex)];
-        if(!el||!name)return;
-        el.value=name;
-        save(name);
-        el.dispatchEvent(new Event("input",{bubbles:true}));
-        el.dispatchEvent(new Event("change",{bubbles:true}));
-      });
-    });
-  }
 
-  /* 이름을 실제 사용한 시점: 기존 투입 확인/처리에서 호출 */
-  window.rememberOfficerRecent3=save;
-
-  if(document.readyState==="loading"){
-    document.addEventListener("DOMContentLoaded",render,{once:true});
-  }else{
-    render();
-  }
-})();
-</script>
 
 <style id="r17s-page3-landscape-shell-v1">
 /* =========================================================
