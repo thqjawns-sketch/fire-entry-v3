@@ -2916,6 +2916,8 @@ async function v249L31CloseSite(){
  try{
   const d=await v2CallPost(p);
   if(!d.ok)throw new Error(d.error||d.message||"현장 종료 실패");
+  /* V3-26: 전술층은 현장 운영용 임시정보이므로 종료 시 해당 현장 매핑만 폐기 */
+  try{localStorage.removeItem("V3_TACTICAL_FLOORS::"+siteName);}catch(e){}
   await v249L34LoadActiveSites();
   alert("✅ "+siteName+"\\n현장활동을 종료했습니다.\\n활동 데이터와 종합보고서는 그대로 보존됩니다.");
   Promise.resolve(loadSites()).catch(e=>console.warn("현장목록 백그라운드 동기화 실패",e));
@@ -4175,6 +4177,11 @@ function v31TeamRegistryKey(){
 function v242ClearSiteTeamState(){
   try{localStorage.removeItem(v31TeamRegistryKey());}catch(e){}
   try{localStorage.removeItem(v23SiteKey());}catch(e){}
+  /* V3-26: 서버상 완전히 빈 새 현장은 전술층도 미지정에서 시작 */
+  try{
+    const site=(document.getElementById("site")||{}).value||"";
+    if(site) localStorage.removeItem("V3_TACTICAL_FLOORS::"+site);
+  }catch(e){}
 }
 function v242DashboardIsCompletelyEmpty(dashboard){
   if(!dashboard)return false;
@@ -8777,28 +8784,27 @@ function v3TacticalSiteKey(){
   return 'V3_TACTICAL_FLOORS::'+site;
 }
 function v3LoadTacticalFloors(){
-  try{
-    const key=v3TacticalSiteKey();
-    const map=JSON.parse(localStorage.getItem(key)||'{}')||{};
-
-    /* V3-26 2층 과거 전술층 기록 1회 정리
-       - 현재 기기에 남아 있는 정확한 '2층 → 화점층' 과거 연결만 1회 제거
-       - 다른 층/전술층 기록과 투입·철수 데이터는 건드리지 않음
-       - 정리 후 사용자가 다시 2층을 화점층으로 지정하는 것은 정상 저장됨 */
-    const cleanupKey='V3_TACTICAL_CLEANUP_2F_FIRE_ONCE::'+key;
-    if(!localStorage.getItem(cleanupKey)){
-      if(String(map['2층']||'').trim()==='화점층'){
-        delete map['2층'];
-        localStorage.setItem(key,JSON.stringify(map));
-      }
-      localStorage.setItem(cleanupKey,'1');
-    }
-    return map;
-  }catch(e){return {};}
+  try{return JSON.parse(localStorage.getItem(v3TacticalSiteKey())||'{}')||{};}catch(e){return {};}
 }
 function v3SaveTacticalFloors(map){
   try{localStorage.setItem(v3TacticalSiteKey(),JSON.stringify(map||{}));}catch(e){}
 }
+/* V3-26 전술층 저장구조 정리:
+   기존 버전에서 기기에 남아 있던 실제층→전술층 매핑을 최초 1회만 전부 폐기한다.
+   이후 새로 지정한 전술층은 현장 활동 중 유지되고, 현장 종료/완전 초기화 때 해당 현장 값만 삭제된다. */
+(function v326ResetLegacyTacticalFloorsOnce(){
+  const marker='V3_TACTICAL_FLOORS_RESET_V326_1';
+  try{
+    if(localStorage.getItem(marker)==='1')return;
+    const keys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k && k.indexOf('V3_TACTICAL_FLOORS::')===0)keys.push(k);
+    }
+    keys.forEach(k=>localStorage.removeItem(k));
+    localStorage.setItem(marker,'1');
+  }catch(e){}
+})();
 function v3TacticalForFloor(floor){
   const f=String(floor||'').trim();
   if(!f||f==='미지정')return '';
