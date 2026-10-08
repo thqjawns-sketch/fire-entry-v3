@@ -2556,9 +2556,9 @@ window.fetch = async function(input, init){
       p.set("entryDirection",old.get("entryDirection")||"");
       p.set("activityFloor",old.get("activityFloor")||"");
       p.set("detailLocation",old.get("detailLocation")||"");
-      /* V3-26 실제 batchEntry 전구간 추적: 기능에는 영향 없이 요청 식별/출발시각만 전달 */
-      p.set("__v326TraceId",old.get("__v326TraceId")||"");
-      p.set("__v326ClientSentAt",old.get("__v326ClientSentAt")||"");
+      p.set("officer",old.get("officer")||"");
+      p.set("traceId",old.get("traceId")||"");
+      p.set("clientSendAt",old.get("clientSendAt")||"");
 
       const d=await v2CallPost(p);
       return v2JsonResponse({
@@ -2571,7 +2571,6 @@ window.fetch = async function(input, init){
         message:d.message||d.error||"",
         /* 진단 전용: 서버 원응답의 처리시간/복구여부를 상위 조투입 로직까지 보존 */
         timing:d.timing||null,
-        responseTrace:d.responseTrace||null,
         recovered:!!d.recovered
       });
     }
@@ -5318,14 +5317,14 @@ async function batchEntryMembers(){
 
   );
 
+  /* V3-26 실제 batchEntry 전구간 원인추적: 기능 변경 없이 요청 식별/시각만 추가 */
+  const v326TraceId = "E-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,7);
+  const v326ClientSendAt = Date.now();
+  form.append("traceId", v326TraceId);
+  form.append("clientSendAt", String(v326ClientSendAt));
+
 
   try{
-
-    /* V3-26 실제 투입 1건 전구간 추적. 저장/재시도/검증 동작은 변경하지 않는다. */
-    const v326EntryTraceId="E-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,7);
-    const v326EntryClientSentAt=Date.now();
-    form.set("__v326TraceId",v326EntryTraceId);
-    form.set("__v326ClientSentAt",String(v326EntryClientSentAt));
 
     const v249L29FetchStarted=performance.now();
 
@@ -5365,36 +5364,6 @@ async function batchEntryMembers(){
       const pd=V326_POST_DIAG_LAST;
       const attempts=(pd&&pd.postAttempts||[]).map(x=>"#"+x.attempt+" "+(x.ms/1000).toFixed(1)+"초").join(", ")||"-";
       const getLabels=(pd&&pd.concurrentGets||[]).map(x=>x.label).join(", ")||"-";
-      const rt=(data&&data.responseTrace)||null;
-      const recvAt=rt?Number(rt.serverReceivedAt||0):0;
-      const buildAt=rt?Number(rt.responseBuildAt||0):0;
-      const clientRecvAt=Date.now();
-      const beforeMs=(recvAt&&v326EntryClientSentAt)?(recvAt-v326EntryClientSentAt):0;
-      const afterMs=(buildAt?clientRecvAt-buildAt:0);
-      const unaccountedMs=Math.max(0,v249L29FetchMs-serverMs);
-      diag.textContent=
-        "추적 "+(rt&&rt.traceId?rt.traceId:v326EntryTraceId)+
-        " · 전체 "+(v249L29TotalMs/1000).toFixed(1)+"초"+
-        " / POST "+(v249L29FetchMs/1000).toFixed(1)+"초"+
-        " / 서버작업 "+(serverMs/1000).toFixed(1)+"초"+
-        " / 서버밖 "+(unaccountedMs/1000).toFixed(1)+"초"+
-        (rt?" / 출발→서버도착* "+(beforeMs/1000).toFixed(1)+"초 / 서버완료→수신* "+(afterMs/1000).toFixed(1)+"초":"")+
-        " / POST시도 "+attempts+
-        " / 저장확인 "+(pd?pd.verifyCount:0)+"회"+
-        (pd&&pd.verifyMs ? " "+(pd.verifyMs/1000).toFixed(1)+"초" : "")+
-        " (*기기-서버 시계차 포함; 정상/지연 건의 변화량 비교용)";
-      console.log("V326_ENTRY_TRACE",{
-        traceId:(rt&&rt.traceId)||v326EntryTraceId,
-        clientSentAt:v326EntryClientSentAt, serverReceivedAt:recvAt,
-        batchEntryStartedAt:rt?Number(rt.batchEntryStartedAt||0):0,
-        workFinishedAt:rt?Number(rt.workFinishedAt||0):0, responseBuildAt:buildAt,
-        clientReceivedAt:clientRecvAt, postMs:v249L29FetchMs, serverMs:serverMs,
-        unaccountedMs:unaccountedMs, beforeMs:beforeMs, afterMs:afterMs,
-        attempts:pd?pd.postAttempts:[], verifyCount:pd?pd.verifyCount:0, verifyMs:pd?pd.verifyMs:0
-      });
-      /* 기존 진단 문자열은 아래 console.table과 함께 유지하지 않고, 위 전구간 추적으로 대체 */
-      void getLabels;
-      /*
       diag.textContent=
         "진단 · 서버 "+(serverMs/1000).toFixed(1)+"초 / POST 응답 "+
         (v249L29FetchMs/1000).toFixed(1)+"초 / 응답차이 "+
@@ -5403,8 +5372,16 @@ async function batchEntryMembers(){
         " / POST시도 "+attempts+
         " / 동시GET "+(pd?pd.concurrentGets.length:0)+"건("+getLabels+")"+
         " / 저장확인 "+(pd?pd.verifyCount:0)+"회"+
-        (pd&&pd.verifyMs ? " "+(pd.verifyMs/1000).toFixed(1)+"초" : "");
-      */
+        (pd&&pd.verifyMs ? " "+(pd.verifyMs/1000).toFixed(1)+"초" : "")+
+        (data&&data.timing&&data.timing.traceId ?
+          " / 추적 "+data.timing.traceId+
+          " / 서버도착→batch "+Math.max(0,Number(data.timing.batchEntryStartedAt||0)-Number(data.timing.serverReceivedAt||0))+"ms"+
+          " / 서버처리 "+Number(data.timing.totalMs||0)+"ms"+
+          " / 서버밖 "+Math.max(0,v249L29FetchMs-Number(data.timing.totalMs||0))+"ms"+
+          " / 서버도착 "+Number(data.timing.serverReceivedAt||0)+
+          " / 서버응답준비 "+Number(data.timing.serverResponseReadyAt||0)+
+          " / 브라우저수신 "+Date.now()
+          : "");
     }catch(diagErr){
       console.warn("조 투입 진단표시 실패",diagErr);
     }
