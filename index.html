@@ -2426,19 +2426,34 @@ async function v2CallPost(params){
         const cloned=new URLSearchParams(params.toString());
         const v326AttemptStarted=performance.now();
         let res;
+        let v326HeadersMs=0;
+        let v326BodyMs=0;
+        let v326ParseMs=0;
         try{
           res=await V2_NATIVE_FETCH(API,{method:"POST",body:cloned,cache:"no-store"});
+          v326HeadersMs=Math.round(performance.now()-v326AttemptStarted);
+          if(!res || !res.ok) throw new Error("서버 응답 오류"+(res?" ("+res.status+")":""));
+
+          /* V3-26 정밀진단: fetch 해결(응답 헤더 도착), 본문 수신, JSON 파싱을 분리 측정.
+             타임아웃/재시도/저장확인 정책은 변경하지 않는다. */
+          const v326BodyStarted=performance.now();
+          const v326RawText=await res.text();
+          v326BodyMs=Math.round(performance.now()-v326BodyStarted);
+          const v326ParseStarted=performance.now();
+          const d=JSON.parse(v326RawText);
+          v326ParseMs=Math.round(performance.now()-v326ParseStarted);
+          return d;
         }finally{
           if(v326Diag){
             v326Diag.postAttempts.push({
               attempt:attempt+1,
-              ms:Math.round(performance.now()-v326AttemptStarted)
+              ms:Math.round(performance.now()-v326AttemptStarted),
+              headersMs:v326HeadersMs,
+              bodyMs:v326BodyMs,
+              parseMs:v326ParseMs
             });
           }
         }
-        if(!res || !res.ok) throw new Error("서버 응답 오류"+(res?" ("+res.status+")":""));
-        const d=await res.json();
-        return d;
       }catch(error){
         lastError=error;
         console.warn("POST 동기화 재시도 "+(attempt+1)+"/"+V249L38_RETRY_DELAYS.length,error);
@@ -5353,7 +5368,12 @@ async function batchEntryMembers(){
       const serverMs=(data&&data.timing)?Number(data.timing.totalMs||0):0;
       const gapMs=Math.max(0,v249L29FetchMs-serverMs);
       const pd=V326_POST_DIAG_LAST;
-      const attempts=(pd&&pd.postAttempts||[]).map(x=>"#"+x.attempt+" "+(x.ms/1000).toFixed(1)+"초").join(", ")||"-";
+      const attempts=(pd&&pd.postAttempts||[]).map(x=>
+        "#"+x.attempt+" "+(x.ms/1000).toFixed(1)+"초"+
+        "[fetch "+((Number(x.headersMs)||0)/1000).toFixed(1)+
+        " / body "+((Number(x.bodyMs)||0)/1000).toFixed(1)+
+        " / parse "+((Number(x.parseMs)||0)/1000).toFixed(3)+"]"
+      ).join(", ")||"-";
       const getLabels=(pd&&pd.concurrentGets||[]).map(x=>x.label).join(", ")||"-";
       diag.textContent=
         "진단 · 서버 "+(serverMs/1000).toFixed(1)+"초 / POST 응답 "+
