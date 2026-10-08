@@ -1378,6 +1378,13 @@ button:disabled{
 .v249l34SiteItem.selected{border-color:#111;background:#f1f3f5}
 .v249l34SiteItem .sub{display:block;margin-top:4px;font-size:12px;font-weight:500;color:#667085}
 
+/* 지휘관/안전점검관 최근사용 3명 */
+.officerRecent3{display:flex;align-items:center;gap:7px;margin-top:8px;min-width:0}
+.officerRecent3:empty{display:none}
+.officerRecent3Label{flex:0 0 auto;font-size:11px;color:#64748b;white-space:nowrap}
+.officerRecent3Btn{flex:1 1 0;min-width:0;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;padding:8px 6px;font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.officerRecent3Btn:active{background:#e0f2fe;border-color:#7dd3fc;color:#075985}
+@media(max-width:560px){.officerRecent3{gap:5px}.officerRecent3Btn{font-size:11px;padding:7px 4px}}
 
 /* 2페이지 현황 새로고침: 아이콘 하나 + 실행 중 회전 */
 #dashboardRefreshBtn .dashboardRefreshIcon{display:inline-block;font-size:20px;line-height:1}
@@ -1659,6 +1666,15 @@ window.V17_STAY_POLICY=Object.freeze({
 </div>
 
 
+
+<label>지휘관 또는 안전점검관</label>
+
+<input
+  type="text"
+  id="officer"
+  placeholder="지휘관 또는 안전점검관 성명"
+>
+<div id="officerRecent3" class="officerRecent3" aria-label="지휘관 또는 안전점검관 최근사용"></div>
 </div>
 
 <button type="button" class="dashboardBtn v17SafetyManageBtn" onclick="openDashboard()">
@@ -2812,7 +2828,7 @@ function v249L31ManagerPin(){
 }
 async function v249L31CreateSite(){
  const siteName=(document.getElementById("v249l31SiteNameInput")?.value||"").trim();if(!siteName){alert("현장명을 입력하세요.");return;}const pin="1190";if(!confirm(siteName+"\n\n새 화재현장을 생성하시겠습니까?"))return;
- const p=new URLSearchParams();p.set("action","createSite");p.set("siteName",siteName);p.set("managerPin",pin);p.set("safetyOfficer","");
+ const p=new URLSearchParams();p.set("action","createSite");p.set("siteName",siteName);p.set("managerPin",pin);p.set("safetyOfficer",(document.getElementById("officer").value||"").trim());
  return v2CallPost(p).then(d=>{if(!d.ok)throw new Error(d.error||d.message||"현장 생성 실패");if(d.siteId)V2_SITE_ID_BY_NAME.set(String(siteName),String(d.siteId));const siteEl=document.getElementById("site");if(siteEl&&![...siteEl.options].some(o=>o.value===siteName)){const op=document.createElement("option");op.value=siteName;op.textContent=siteName;siteEl.appendChild(op);}if(siteEl)siteEl.value=siteName;v249L31CloseSiteManager();alert("🔥 "+siteName+"\n현장을 생성했습니다.\n첫 조는 1조 / 1차 활동부터 시작합니다.");if(typeof siteChanged==="function")Promise.resolve(siteChanged()).catch(e=>console.warn("새 현장 초기화 지연",e));}).catch(e=>alert(e&&e.message?e.message:"현장 생성 중 오류가 발생했습니다."));
 }
 async function v249L34LoadActiveSites(){
@@ -3008,6 +3024,7 @@ async function v249L31OpenReport(siteIdOverride,siteNameOverride){
       "<h1>화재현장 진·출입 활동 종합보고서</h1>"+
       "<p>"+
         "<b>현장명</b> "+v249L31Esc(d.site.siteName||siteName||"-")+"<br>"+
+        "<b>지휘관 또는 안전점검관</b> "+v249L31Esc(officer)+"<br>"+
         "<b>현장상태</b> "+v249L31Esc(d.site.status||"-")+"<br>"+
         "<b>현장 생성</b> "+v249L31Esc(d.site.createdAt||"-")+"<br>"+
         "<b>현장 종료</b> "+v249L31Esc(d.site.closedAt||"-")+"<br>"+
@@ -5121,7 +5138,13 @@ async function batchEntryMembers(){
       .value;
 
 
-  const officer = "";
+  const officer =
+    document
+      .getElementById(
+        "officer"
+      )
+      .value
+      .trim();
 
 
   if(
@@ -5136,6 +5159,18 @@ async function batchEntryMembers(){
 
   }
 
+
+  if(
+    !officer
+  ){
+
+    alert(
+      "지휘관 또는 안전점검관 성명을 입력하세요."
+    );
+
+    return;
+
+  }
 
 
   if(
@@ -5193,6 +5228,7 @@ async function batchEntryMembers(){
   let teamName = resolvedTeam.teamName;
   let activityNo = resolvedTeam.activityNo;
 
+  rememberOfficerRecent3(officer);
   if(
     !confirm(
       teamName + " · " + activityNo + "차 활동 · " + selectedTeamMembers.length + "명을 투입하시겠습니까?\n" +
@@ -5946,10 +5982,14 @@ async function toggleExitScanner(){
 
 async function startExitScanner(){
   const site=(document.getElementById("site")||{}).value||"";
-  const officer="";
+  const officer=((document.getElementById("officer")||{}).value||"").trim();
 
   if(!site){
     alert("화재현장을 선택하세요.");
+    return;
+  }
+  if(!officer){
+    alert("지휘관 또는 안전점검관 성명을 입력하세요.");
     return;
   }
 
@@ -6165,7 +6205,13 @@ async function batchExitMembers(){
       .value;
 
 
-  const officer = "";
+  const officer =
+    document
+      .getElementById(
+        "officer"
+      )
+      .value
+      .trim();
 
 
   if(
@@ -6180,6 +6226,18 @@ async function batchExitMembers(){
 
   }
 
+
+  if(
+    !officer
+  ){
+
+    alert(
+      "지휘관 또는 안전점검관 성명을 입력하세요."
+    );
+
+    return;
+
+  }
 
 
   const checked =
@@ -9977,7 +10035,57 @@ function r17pRenderCurrentTeamPage(){
 })();
 </script>
 
+<script id="officer-recent3-module">
+/* 지휘관/안전점검관 최근사용: 최근 확정 사용 3명만 저장/선택 */
+(function(){
+  const KEY="fireOfficerRecent3";
+  function input(){ return document.getElementById("officer"); }
+  function load(){
+    try{
+      const a=JSON.parse(localStorage.getItem(KEY)||"[]");
+      return Array.isArray(a)?a.filter(Boolean).slice(0,3):[];
+    }catch(e){ return []; }
+  }
+  function save(name){
+    name=String(name||"").trim();
+    if(!name)return;
+    const a=load().filter(v=>v!==name);
+    a.unshift(name);
+    localStorage.setItem(KEY,JSON.stringify(a.slice(0,3)));
+    render();
+  }
+  function esc(v){
+    return String(v||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+  function render(){
+    const box=document.getElementById("officerRecent3");
+    if(!box)return;
+    const a=load();
+    if(!a.length){box.innerHTML="";return;}
+    box.innerHTML='<span class="officerRecent3Label">최근사용</span>'+
+      a.map((name,i)=>'<button type="button" class="officerRecent3Btn" data-recent-index="'+i+'">'+esc(name)+'</button>').join("");
+    box.querySelectorAll(".officerRecent3Btn").forEach(btn=>{
+      btn.addEventListener("click",function(){
+        const el=input(), name=load()[Number(this.dataset.recentIndex)];
+        if(!el||!name)return;
+        el.value=name;
+        save(name);
+        el.dispatchEvent(new Event("input",{bubbles:true}));
+        el.dispatchEvent(new Event("change",{bubbles:true}));
+      });
+    });
+  }
 
+  /* 이름을 실제 사용한 시점: 기존 투입 확인/처리에서 호출 */
+  window.rememberOfficerRecent3=save;
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",render,{once:true});
+  }else{
+    render();
+  }
+})();
+</script>
 
 <style id="r17s-page3-landscape-shell-v1">
 /* =========================================================
