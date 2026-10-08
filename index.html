@@ -1838,12 +1838,16 @@ window.V17_STAY_POLICY=Object.freeze({
 <label>활동층</label>
 <div class="v3FloorStep" id="activityFloorStep">
   <button type="button" class="v3FloorStepBtn" onclick="v3StepActivityFloor(-1)" aria-label="한 층 아래">−</button>
-  <div class="v3FloorBanner" id="activityFloorBanner">1층</div>
+  <div class="v3FloorBanner" id="activityFloorBanner">미지정</div>
   <button type="button" class="v3FloorStepBtn" onclick="v3StepActivityFloor(1)" aria-label="한 층 위">＋</button>
 </div>
 
 <label>세부 위치</label>
 <input type="text" id="detailLocation" placeholder="예: 기계실 / 1203호 / 생산라인" oninput="updateTeamPreview()">
+<div id="v325RecentDetailWrap" class="v325RecentDetailWrap" style="display:none">
+  <span class="v325RecentDetailLabel">최근사용</span>
+  <div id="v325RecentDetailButtons" class="v325RecentDetailButtons"></div>
+</div>
 
 <div id="teamPreview" class="teamPreview">조 편성 정보를 선택하세요.</div>
 <div id="teamError" class="teamError"></div>
@@ -2596,7 +2600,7 @@ let entryQueue = [];
 // V2 조 편성 상태
 let selectedTeamMemberIds = new Set();
 let entryDirection = "";
-let activityFloor = "1층";
+let activityFloor = "";
 
 let scanner = null;
 let scanning = false;
@@ -4017,8 +4021,16 @@ async function openTeamSetup(){
     return;
   }
 
+  /* V3-26: 조편성 화면을 새로 열 때 입력위치를 항상 새 조 기준으로 초기화 */
+  entryDirection="";
+  activityFloor="";
+  document.querySelectorAll('#entryDirectionChoices .v2Choice').forEach(b=>b.classList.remove('active'));
+  const v326Detail=document.getElementById('detailLocation');
+  if(v326Detail) v326Detail.value='';
+
   card.classList.add("modeOpen");
   v3RenderActivityFloor();
+  v325RenderRecentDetails();
   renderTeamMembers();
   v31UpdateTeamPreviewAuto();
 
@@ -4092,13 +4104,19 @@ function v3ActivityFloorText(n){
 }
 function v3RenderActivityFloor(){
   const el=document.getElementById('activityFloorBanner');
-  if(el) el.textContent=activityFloor||'1층';
+  if(el) el.textContent=activityFloor||'미지정';
 }
 function v3StepActivityFloor(delta){
-  let n=v3ActivityFloorNumber(activityFloor);
-  n += Number(delta)||0;
-  if(n===0) n = delta<0 ? -1 : 1;
-  activityFloor=v3ActivityFloorText(n);
+  const d=Number(delta)||0;
+  /* V3-25: 미지정에서 +는 1층, -는 B1부터 시작 */
+  if(!String(activityFloor||'').trim()){
+    activityFloor=d<0?'B1':'1층';
+  }else{
+    let n=v3ActivityFloorNumber(activityFloor);
+    n += d;
+    if(n===0) n = d<0 ? -1 : 1;
+    activityFloor=v3ActivityFloorText(n);
+  }
   v3RenderActivityFloor();
   updateTeamPreview();
 }
@@ -4263,8 +4281,47 @@ function updateTeamPreview(){
   const pos=[entryDirection||'진입방면 미선택',activityFloor||'활동층 미선택',detail.trim()].filter(Boolean).join(' → ');
   preview.innerHTML='<b>'+escapeHtml(team)+' · '+selected.length+'명</b><br>'+escapeHtml(names)+'<br>📍 '+escapeHtml(pos);
 }
+/* V3-25: 조 투입 세부위치 최근사용 3개 - 현장별 브라우저 저장 */
+function v325RecentDetailKey(){
+  const site=(document.getElementById('site')||{}).value||'default';
+  return 'V3_RECENT_ENTRY_DETAIL::'+site;
+}
+function v325LoadRecentDetails(){
+  try{
+    const arr=JSON.parse(localStorage.getItem(v325RecentDetailKey())||'[]');
+    return Array.isArray(arr)?arr.filter(v=>String(v||'').trim()).slice(0,3):[];
+  }catch(e){ return []; }
+}
+function v325RememberRecentDetail(value){
+  const v=String(value||'').trim();
+  if(!v)return;
+  const arr=v325LoadRecentDetails().filter(x=>String(x).trim()!==v);
+  arr.unshift(v);
+  try{localStorage.setItem(v325RecentDetailKey(),JSON.stringify(arr.slice(0,3)));}catch(e){}
+  v325RenderRecentDetails();
+}
+function v325UseRecentDetail(value){
+  const input=document.getElementById('detailLocation');
+  if(input)input.value=String(value||'');
+  updateTeamPreview();
+}
+function v325RenderRecentDetails(){
+  const wrap=document.getElementById('v325RecentDetailWrap');
+  const box=document.getElementById('v325RecentDetailButtons');
+  if(!wrap||!box)return;
+  const arr=v325LoadRecentDetails();
+  box.innerHTML='';
+  arr.forEach(v=>{
+    const b=document.createElement('button');
+    b.type='button'; b.className='v325RecentDetailBtn'; b.textContent=v;
+    b.addEventListener('click',()=>v325UseRecentDetail(v));
+    box.appendChild(b);
+  });
+  wrap.style.display=arr.length?'block':'none';
+}
+
 function resetV2Team(){
-  selectedTeamMemberIds.clear(); entryDirection=''; activityFloor='1층';
+  selectedTeamMemberIds.clear(); entryDirection=''; activityFloor='';
   document.querySelectorAll('#entryDirectionChoices .v2Choice').forEach(b=>b.classList.remove('active'));
   const d=document.getElementById('detailLocation'); if(d)d.value='';
   v3RenderActivityFloor();
@@ -5321,6 +5378,9 @@ async function batchEntryMembers(){
       data.successCount > 0
     ){
 
+      /* V3-25: 실제 투입 성공 시에만 세부위치를 최근사용에 기록 */
+      v325RememberRecentDetail(detailLocation);
+
       const successIds =
         new Set(
 
@@ -5386,6 +5446,8 @@ async function batchEntryMembers(){
          처음 투입대기 명단의 조편성이 끝날 때까지 화면을 유지한다.
          새 대원이 대기명단에 추가돼도 renderQueue()가 즉시 이 화면에 반영한다. */
       if(entryQueue.length===0){
+        /* V3-25: 다음 조편성은 방면/활동층/세부위치 모두 새로 시작 */
+        resetV2Team();
         resetPPE();
         closeTeamSetup();
       }else{
@@ -5394,6 +5456,8 @@ async function batchEntryMembers(){
         document.querySelectorAll('#entryDirectionChoices .v2Choice,#activityFloorChoices .v2Choice,#extraFloorBox .v2Choice').forEach(b=>b.classList.remove('active'));
         const ex=document.getElementById('extraFloorBox'); if(ex) ex.classList.remove('show');
         const dl=document.getElementById('detailLocation'); if(dl) dl.value='';
+        v3RenderActivityFloor();
+        v325RenderRecentDetails();
         checkPPE();
         renderTeamMembers();
         v31UpdateTeamPreviewAuto();
@@ -8801,9 +8865,11 @@ function v29GroupTeams(list){
   });
   return Object.keys(groups).sort((a,b)=>v28TeamNo(a)-v28TeamNo(b)).map(team=>{
     const g=groups[team];
-    const unique=(key,fallback)=>[...new Set(g.map(x=>String(x.vm[key]||x.m[key]||fallback)))];
-    const dirs=unique("entryDirection","미지정"),floors=unique("activityFloor","미지정");
-    const details=[...new Set(g.map(x=>{const v=String(x.vm.detailLocation||x.m.detail||"").trim();return (!v||v==="미지정"||/세부\s*장소\s*미지정/i.test(v))?"-":v;}))];
+    /* V3-24: 3페이지 위치정보는 2페이지와 동일하게 현재 대원 원본값을 우선 사용한다.
+       localStorage 메타는 서버/메모리 값이 비어 있을 때만 보조값으로 사용한다. */
+    const dirs=[...new Set(g.map(x=>String(x.m.direction||x.vm.entryDirection||"미지정")))];
+    const floors=[...new Set(g.map(x=>String(x.m.floor||x.vm.activityFloor||"미지정")))];
+    const details=[...new Set(g.map(x=>{const v=String(x.m.detail||x.vm.detailLocation||"").trim();return (!v||v==="미지정"||/세부\s*장소\s*미지정/i.test(v))?"-":v;}))];
     const maxMin=Math.max(0,...g.map(x=>v29MemberMinutes(x.m)));
     const actNo=Math.max(1,...g.map(x=>Number(x.vm.teamActivityNo||x.m.activityNo||x.m.entryCount)||1));
     return {team,count:g.length,activityNo:actNo,minutes:maxMin,
@@ -11333,6 +11399,39 @@ function r17pRenderCurrentTeamPage(){
 </style>
 
 
+<style id="v3-26-entry-recent-and-mobile-pan">
+.v325RecentDetailWrap{margin:7px 0 10px}
+.v325RecentDetailLabel{display:block;margin-bottom:6px;font-size:12px;font-weight:900;color:#607086}
+.v325RecentDetailButtons{display:flex;gap:6px;flex-wrap:wrap}
+.v325RecentDetailBtn{width:auto!important;margin:0!important;padding:7px 10px!important;border:1px solid #b8c7d8!important;border-radius:9px!important;background:#f4f8fc!important;color:#173d67!important;font-size:13px!important;font-weight:900!important}
+
+/* V3-26: 휴대폰/태블릿 세로에서는 3페이지 자체 폭을 1440px로 유지하고 화면(body)을 좌우 이동 */
+@media (max-width:1180px){
+  html,body{
+    overflow-x:auto!important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-x:contain;
+  }
+  #teamBoardPageV29{
+    width:1440px!important;
+    min-width:1440px!important;
+    max-width:none!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    padding-left:10px!important;
+    padding-right:10px!important;
+    box-sizing:border-box!important;
+    overflow:visible!important;
+    touch-action:pan-x pan-y!important;
+  }
+  #teamBoardPageV29 > *{
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+  }
+}
+</style>
+
 <style id="v3-18-tablet-horizontal-pan">
 /* 태블릿: 모니터용 정보/크기를 유지하고 화면 자체를 좌우로 이동 */
 @media (max-width:1180px){
@@ -11341,12 +11440,7 @@ function r17pRenderCurrentTeamPage(){
     overscroll-behavior-x:contain;
     -webkit-overflow-scrolling:touch;
   }
-  #teamBoardPageV29{
-    width:1440px!important;
-    min-width:1440px!important;
-    max-width:none!important;
-    overflow:visible!important;
-  }
+  /* V3-26: 3페이지가 1440px 원본폭을 유지하며 body 가로스크롤을 사용 */
   #teamBoardPageV29,
   #teamBoardPageV29 *{
     touch-action:pan-x pan-y;
