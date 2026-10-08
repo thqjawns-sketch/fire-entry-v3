@@ -7389,7 +7389,11 @@ function openDashboardMemberDetail(memberId,memberName){
   const name=parts[0]||memberName||"-";
   const rank=parts[1]||"-";
   const dept=parts.slice(2).join(" / ")||"-";
-  const floor=vm.activityFloor||"미지정";
+  // V3-26 위치표시 정합성: 활동중 대원의 현재 층은 서버 current 원본을 최종 기준으로 사용
+  const floor=String(member.floor||'').trim()||"미지정";
+  const currentDir=String(member.direction||'').trim()||"미지정";
+  const currentDetailRaw=String(member.detail||'').trim();
+  const currentDetail=(!currentDetailRaw||currentDetailRaw==='미지정'||/세부\s*장소\s*미지정/i.test(currentDetailRaw))?'-':currentDetailRaw;
   const stay=getStayStatus(member.currentMinutes);
   const currentText=v237FormatMinutes(member.currentMinutes);
   const totalText=v237FormatMinutes(member.totalMinutes);
@@ -7408,8 +7412,8 @@ function openDashboardMemberDetail(memberId,memberName){
       '<div class="sheetMemberTitle">'+stay.icon+' '+escapeHtml(name)+' '+escapeHtml(rank)+' / '+escapeHtml(dept)+'</div>'+
       '<div class="sheetLocation">'+
         escapeHtml(vm.teamName||"미지정")+(vm.teamActivityNo?' · '+Number(vm.teamActivityNo)+'차':'')+' · '+
-        escapeHtml(vm.entryDirection||"미지정")+' · <span class="floorMini '+v23FloorClass(floor)+'">'+escapeHtml(floor)+'</span>'+
-        ' / '+escapeHtml((!vm.detailLocation||vm.detailLocation==='미지정'||/세부\s*장소\s*미지정/i.test(vm.detailLocation))?'-':vm.detailLocation)+
+        escapeHtml(currentDir)+' · <span class="floorMini '+v23FloorClass(floor)+'">'+escapeHtml(floor)+'</span>'+
+        ' / '+escapeHtml(currentDetail)+
       '</div>'+
       '<div class="v237InfoList">'+
         '<div class="v237InfoRow"><span class="v237InfoLabel">진입시각</span><span class="v237InfoValue">'+escapeHtml(member.entryTime||"-")+'</span></div>'+
@@ -8634,9 +8638,9 @@ if(typeof oldDetail==='function'){
     const i=info(m),meta=(typeof v23LoadMeta==='function'?v23LoadMeta():{}),vm=meta[String(id)]||{};
     const team=vm.teamName||i.team||'미지정';
     const act=Number(vm.teamActivityNo||i.activityNo||m.entryCount||1)||1;
-    const floor=vm.activityFloor||i.floor||'미지정';
-    const dir=vm.entryDirection||i.direction||'미지정';
-    const detail=r16mDetailText(vm.detailLocation||i.detail||'');
+    const floor=String(i.floor||'').trim()||'미지정';
+    const dir=String(i.direction||'').trim()||'미지정';
+    const detail=r16mDetailText(i.detail||'');
 
     const title=document.querySelector('#dashboardDetailOverlay .sheetMemberTitle');
     if(title){
@@ -8918,9 +8922,9 @@ function v29GroupTeams(list){
     const g=groups[team];
     /* V3-24: 3페이지 위치정보는 2페이지와 동일하게 현재 대원 원본값을 우선 사용한다.
        localStorage 메타는 서버/메모리 값이 비어 있을 때만 보조값으로 사용한다. */
-    const dirs=[...new Set(g.map(x=>String(x.m.direction||x.vm.entryDirection||"미지정")))];
-    const floors=[...new Set(g.map(x=>String(x.m.floor||x.vm.activityFloor||"미지정")))];
-    const details=[...new Set(g.map(x=>{const v=String(x.m.detail||x.vm.detailLocation||"").trim();return (!v||v==="미지정"||/세부\s*장소\s*미지정/i.test(v))?"-":v;}))];
+    const dirs=[...new Set(g.map(x=>String(x.m.direction||"미지정")))];
+    const floors=[...new Set(g.map(x=>String(x.m.floor||"미지정")))];
+    const details=[...new Set(g.map(x=>{const v=String(x.m.detail||"").trim();return (!v||v==="미지정"||/세부\s*장소\s*미지정/i.test(v))?"-":v;}))];
     const maxMin=Math.max(0,...g.map(x=>v29MemberMinutes(x.m)));
     const actNo=Math.max(1,...g.map(x=>Number(x.vm.teamActivityNo||x.m.activityNo||x.m.entryCount)||1));
     return {team,count:g.length,activityNo:actNo,minutes:maxMin,
