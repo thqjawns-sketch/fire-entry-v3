@@ -1,77 +1,62 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>V3-26 GET/POST 통신경로 진단</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>V3-26 응답경로 2차 정밀진단</title>
 <style>
-body{font-family:system-ui,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;background:#f7f7f7}
-.card{background:white;border:1px solid #ddd;border-radius:14px;padding:16px;margin-bottom:14px}
-button{font-size:18px;padding:12px 16px;margin:4px;border-radius:10px;border:1px solid #aaa;background:white}
-pre{white-space:pre-wrap;word-break:break-word;background:#111;color:#eee;padding:14px;border-radius:10px;min-height:180px}
-table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:right}th:first-child,td:first-child{text-align:left}
-</style>
-</head>
-<body>
-<div class="card">
-<h2>V3-26 빈 GET / 빈 POST 통신경로 진단</h2>
-<p>시트 저장, 대원 투입, CURRENT/HISTORY, 카드 생성 없이 Apps Script 응답 경로만 측정합니다.</p>
-<button onclick="runOne('GET')">GET 1회</button>
-<button onclick="runOne('POST')">POST 1회</button>
-<button onclick="runSeries(20)">GET/POST 각 20회</button>
-<button onclick="clearLog()">초기화</button>
-</div>
-<div class="card"><div id="summary">아직 측정하지 않음</div></div>
-<div class="card"><pre id="log"></pre></div>
+body{font-family:system-ui,sans-serif;max-width:1000px;margin:20px auto;padding:0 14px;background:#f5f5f5}
+.card{background:#fff;border:1px solid #ddd;border-radius:14px;padding:15px;margin:12px 0}
+button{font-size:17px;padding:11px 14px;margin:4px;border:1px solid #aaa;border-radius:9px;background:#fff}
+pre{white-space:pre-wrap;word-break:break-all;background:#111;color:#eee;padding:14px;border-radius:10px;min-height:220px}
+</style></head><body>
+<div class="card"><h2>V3-26 응답 전달경로 2차 정밀진단</h2>
+<p>시트/투입/철수는 건드리지 않습니다. GET·POST의 fetch 대기, body, redirect, 최종 URL, HTTP 상태, Content-Type과 Resource Timing을 기록합니다.</p>
+<button onclick="series(20)">GET/POST 각 20회</button>
+<button onclick="one('GET')">GET 1회</button><button onclick="one('POST')">POST 1회</button>
+<button onclick="clearAll()">초기화</button></div>
+<div class="card"><div id="sum">대기 중</div></div><div class="card"><pre id="log"></pre></div>
 <script>
-const API='https://script.google.com/macros/s/AKfycbzhssvduJsmqd27QBArEf_z6gOmD691RFdn0GMdNPtZkOYIkEIcgD9n3mlAFv-tK30g/exec';
-const rows=[];
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function q(n){return Math.round(n*10)/10}
-function add(r){
- rows.push(r);
- const line=`${rows.length}. ${r.kind} 전체 ${q(r.total)}초 | 서버 ${q(r.server)}초 | 응답전달추정 ${q(r.delivery)}초`;
- document.getElementById('log').textContent=line+"\n"+document.getElementById('log').textContent;
+const API='https://script.google.com/macros/s/AKfycbzhssvduJsmqd27QBArEf_z6gOmD691RFdn0GMdNPtZkOYIkEIcgD9n3mlAFv-tK30g/exec'; let rows=[],running=false;
+const sl=m=>new Promise(r=>setTimeout(r,m)), q=n=>Math.round(n*100)/100;
+function resource(url,start){
+ const es=performance.getEntriesByType('resource').filter(e=>e.name===url || e.name.startsWith(url.split('?')[0]));
+ const e=es.length?es[es.length-1]:null;
+ if(!e)return null;
+ return {name:e.name,redirect:q(e.redirectEnd-e.redirectStart),requestToResponse:q(e.responseStart-e.requestStart),
+ response:q(e.responseEnd-e.responseStart),duration:q(e.duration),start:q(e.startTime-start)};
+}
+async function one(kind){
+ const id=Date.now()+'-'+Math.random().toString(36).slice(2,7);
+ let url=API, init={cache:'no-store'};
+ if(kind==='GET') url=API+'?action=pingDiag&rid='+encodeURIComponent(id)+'&t='+Date.now();
+ else {const p=new URLSearchParams();p.set('action','pingPostDiag');p.set('rid',id);p.set('t',Date.now());init={method:'POST',body:p,cache:'no-store'};}
+ const t0=performance.now(); let r,txt='',data=null,err='';
+ try{
+   r=await fetch(url,init); const tf=performance.now();
+   txt=await r.text(); const tb=performance.now();
+   try{data=JSON.parse(txt)}catch(e){err='JSON아님: '+txt.slice(0,100).replace(/\s+/g,' ')}
+   const server=data&&data.serverWorkMs!=null?Number(data.serverWorkMs)/1000:0;
+   const row={kind,id,total:(tb-t0)/1000,fetch:(tf-t0)/1000,body:(tb-tf)/1000,server,
+     redirected:r.redirected,status:r.status,type:r.type,ct:r.headers.get('content-type')||'-',
+     finalUrl:r.url,rt:resource(url,t0),err};
+   rows.push(row); print(row);
+ }catch(e){rows.push({kind,id,total:(performance.now()-t0)/1000,err:String(e)});print(rows[rows.length-1]);}
  summarize();
 }
+function print(x){
+ let s=`${rows.length}. ${x.kind} 전체 ${q(x.total)}초 | fetch ${q(x.fetch||0)}초 | body ${q(x.body||0)}초 | 서버 ${q(x.server||0)}초\n`;
+ s+=`   HTTP ${x.status||'-'} | redirect ${x.redirected} | type ${x.type||'-'} | Content-Type ${x.ct||'-'}\n`;
+ if(x.finalUrl)s+=`   최종URL: ${x.finalUrl}\n`;
+ if(x.rt)s+=`   ResourceTiming: redirect ${x.rt.redirect}ms | request→responseStart ${x.rt.requestToResponse}ms | response ${x.rt.response}ms | duration ${x.rt.duration}ms\n`;
+ else s+=`   ResourceTiming: 상세값 없음(교차출처 제한 가능)\n`;
+ if(x.err)s+=`   오류: ${x.err}\n`;
+ document.getElementById('log').textContent=s+document.getElementById('log').textContent;
+}
 function summarize(){
- if(!rows.length){document.getElementById('summary').textContent='아직 측정하지 않음';return;}
- const s=k=>rows.filter(x=>x.kind===k);
- const fmt=a=>{
-   if(!a.length)return '-';
-   const v=a.map(x=>x.total).sort((a,b)=>a-b);
-   const avg=v.reduce((x,y)=>x+y,0)/v.length;
-   return `${a.length}회 / 평균 ${q(avg)}초 / 최소 ${q(v[0])}초 / 최대 ${q(v[v.length-1])}초`;
- };
- document.getElementById('summary').innerHTML=`<b>GET</b> ${fmt(s('GET'))}<br><b>POST</b> ${fmt(s('POST'))}`;
+ const f=k=>rows.filter(x=>x.kind===k&&Number.isFinite(x.total));
+ const z=a=>a.length?`평균 ${q(a.reduce((s,x)=>s+x.total,0)/a.length)}초 / 최대 ${q(Math.max(...a.map(x=>x.total)))}초`:'-';
+ document.getElementById('sum').innerHTML=`GET ${z(f('GET'))}<br>POST ${z(f('POST'))}`;
 }
-async function runOne(kind){
- const start=performance.now();
- let data;
- if(kind==='GET'){
-   const r=await fetch(API+'?action=pingDiag&t='+Date.now(),{cache:'no-store'});
-   data=await r.json();
- }else{
-   const p=new URLSearchParams();p.set('action','pingPostDiag');p.set('t',String(Date.now()));
-   const r=await fetch(API,{method:'POST',body:p,cache:'no-store'});
-   data=await r.json();
- }
- const end=performance.now();
- const total=(end-start)/1000;
- const server=Math.max(0,Number(data.serverWorkMs||0))/1000;
- add({kind,total,server,delivery:Math.max(0,total-server),data});
-}
-let running=false;
-async function runSeries(n){
- if(running)return; running=true;
- try{
-   for(let i=0;i<n;i++){
-     await runOne('GET'); await sleep(500);
-     await runOne('POST'); await sleep(1000);
-   }
- }catch(e){document.getElementById('log').textContent='오류: '+e.message+'\n'+document.getElementById('log').textContent;}
- finally{running=false;}
-}
-function clearLog(){rows.length=0;document.getElementById('log').textContent='';summarize();}
-</script>
-</body></html>
+async function series(n){if(running)return;running=true;try{for(let i=0;i<n;i++){await one('GET');await sl(500);await one('POST');await sl(800);}}finally{running=false}}
+function clearAll(){rows=[];performance.clearResourceTimings();document.getElementById('log').textContent='';summarize();}
+</script></body></html>
