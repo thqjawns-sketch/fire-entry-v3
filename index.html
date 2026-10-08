@@ -2417,35 +2417,9 @@ async function v249L38VerifyWrite(params){
 
 async function v2CallPost(params){
   const v326Diag=v326DiagStart(params);
-  const v326Action=String(params.get("action")||"");
-  const v326EntryExit=(v326Action==="batchEntry" || v326Action==="batchExit");
-
   v249L38WritePending++;
   let lastError=null;
   try{
-    /* V3-26 투입/철수 전용:
-       서버가 실제 활동상태를 기준으로 중복 투입/철수를 방지하므로
-       batchEntry/batchExit는 POST 응답 오류 뒤 저장상태 확인 GET 및 자동 POST 재전송을 하지 않는다.
-       다른 POST는 기존 복구/재시도 로직을 그대로 유지한다. */
-    if(v326EntryExit){
-      const cloned=new URLSearchParams(params.toString());
-      const v326AttemptStarted=performance.now();
-      let res;
-      try{
-        res=await V2_NATIVE_FETCH(API,{method:"POST",body:cloned,cache:"no-store"});
-      }finally{
-        if(v326Diag){
-          v326Diag.postAttempts.push({
-            attempt:1,
-            ms:Math.round(performance.now()-v326AttemptStarted)
-          });
-        }
-      }
-      if(!res || !res.ok) throw new Error("서버 응답 오류"+(res?" ("+res.status+")":""));
-      return await res.json();
-    }
-
-    /* 이하 다른 POST는 기존 동작 그대로 */
     for(let attempt=0;attempt<V249L38_RETRY_DELAYS.length;attempt++){
       if(attempt>0) await v249L38Sleep(V249L38_RETRY_DELAYS[attempt]);
       try{
@@ -2469,14 +2443,15 @@ async function v2CallPost(params){
         lastError=error;
         console.warn("POST 동기화 재시도 "+(attempt+1)+"/"+V249L38_RETRY_DELAYS.length,error);
 
-        /* 기존 다른 POST의 응답 유실 복구 로직 유지 */
+        /* 응답만 유실된 경우 바로 다시 POST하면 중복 기록 위험이 있으므로
+           현재상태를 먼저 확인하고, 이미 반영되었으면 성공으로 종료한다. */
         const v326VerifyWaitStarted=performance.now();
         const verified=await v249L38VerifyWrite(params);
         if(v326Diag) v326Diag.verifyMs += Math.round(performance.now()-v326VerifyWaitStarted);
         if(verified) return verified;
       }
     }
-    throw lastError||new Error("서버 저장 실패");
+    throw lastError||new Error("동기화 실패");
   }finally{
     v326DiagFinish(v326Diag);
     v249L38WritePending=Math.max(0,v249L38WritePending-1);
