@@ -11900,9 +11900,11 @@ if ('serviceWorker' in navigator) {
 }
 /* Floor diagram only: centered teams, gentle safety pulses. */
 #teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamRows{
-  left:4%!important;width:88%!important;
-  justify-content:center!important;align-items:flex-end!important;
-  align-content:flex-end!important
+  left:50%!important;top:52%!important;width:88%!important;
+  transform:translate(-50%,-50%)!important;
+  justify-content:center!important;align-items:center!important;
+  align-content:center!important;flex-wrap:wrap!important;
+  max-height:90%!important
 }
 #teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.iso{
   animation:r17bIsolationSoftPulse 3s ease-in-out infinite!important
@@ -11917,6 +11919,16 @@ if ('serviceWorker' in navigator) {
 @keyframes r17bSafetySoftPulse{
   0%,100%{background:#f59e0b;box-shadow:0 0 0 0 rgba(245,158,11,0)}
   50%{background:#fbbf24;box-shadow:0 0 0 2px rgba(245,158,11,.13)}
+}
+/* Earlier badge rules force a fixed background with !important.
+   Animate the actual background property at matching priority. */
+@keyframes r17bIsolationSoftPulse{
+  0%,100%{background:#b91c1c!important;box-shadow:0 0 0 0 rgba(185,28,28,0)}
+  50%{background:#dc2626!important;box-shadow:0 0 0 3px rgba(220,38,38,.22)}
+}
+@keyframes r17bSafetySoftPulse{
+  0%,100%{background:#f59e0b!important;box-shadow:0 0 0 0 rgba(245,158,11,0)}
+  50%{background:#fbbf24!important;box-shadow:0 0 0 2px rgba(245,158,11,.13)}
 }
 @media(prefers-reduced-motion:reduce){
   #teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.iso,
