@@ -11743,5 +11743,62 @@ if ('serviceWorker' in navigator) {
 })();
 </script>
 
+<!-- SYNC_DIAG_V1_OPTIN -->
+<script>
+/* 선택형 진단: URL에 ?syncdiag=1, 종료: ?syncdiag=0. 기존 기능 변경 없음. */
+(function(){
+try{
+ const q=new URLSearchParams(location.search);
+ if(q.get('syncdiag')==='1')sessionStorage.setItem('fireSyncDiag','1');
+ if(q.get('syncdiag')==='0')sessionStorage.removeItem('fireSyncDiag');
+ if(sessionStorage.getItem('fireSyncDiag')!=='1')return;
+ const logs=[];let pre;
+ function log(name,info){
+  const s=new Date().toLocaleTimeString('ko-KR',{hour12:false})+' '+name+(info?' '+info:'');
+  logs.push(s);if(logs.length>150)logs.shift();
+  if(pre){pre.textContent=logs.slice(-20).join('\n');pre.scrollTop=pre.scrollHeight;}
+  console.info('[SYNC-DIAG]',s);
+ }
+ window.fireSyncDiag={logs:logs,log:log};
+ const fetchOriginal=window.fetch;
+ if(typeof fetchOriginal==='function')window.fetch=function(input,init){
+  let action='';try{
+   const u=new URL(typeof input==='string'?input:input.url,location.href);
+   action=u.searchParams.get('action')||'';
+   if(!action&&init&&init.body){
+    if(typeof init.body==='string')action=new URLSearchParams(init.body).get('action')||'';
+    else if(init.body instanceof URLSearchParams)action=init.body.get('action')||'';
+   }
+  }catch(e){}
+  const started=Date.now();log('FETCH 시작',action||'unknown');
+  return fetchOriginal.apply(this,arguments).then(function(r){
+   log('FETCH 완료',(action||'unknown')+' '+r.status+' '+(Date.now()-started)+'ms');return r;
+  },function(e){log('FETCH 오류',String(e&&e.message||e));throw e;});
+ };
+ function wrap(name){
+  const old=window[name];if(typeof old!=='function'||old.__syncDiag)return;
+  const next=function(){
+   log('함수 호출',name);
+   const result=old.apply(this,arguments);
+   if(result&&typeof result.then==='function')return result.then(function(v){log('함수 완료',name);return v;},function(e){log('함수 오류',name);throw e;});
+   log('함수 완료',name);return result;
+  };next.__syncDiag=true;window[name]=next;
+ }
+ function init(){
+  const panel=document.createElement('div');
+  panel.style.cssText='position:fixed;z-index:2147483647;right:6px;bottom:6px;width:min(94vw,420px);max-height:40vh;background:#111;color:#d5f9e3;border:2px solid #46b97b;border-radius:8px;font:11px/1.5 monospace;';
+  const bar=document.createElement('div');bar.style.cssText='display:flex;gap:5px;padding:5px;';
+  const label=document.createElement('span');label.textContent='동기화 진단 V1';label.style.flex='1';bar.appendChild(label);
+  const copy=document.createElement('button');copy.type='button';copy.textContent='복사';copy.onclick=function(){const s=logs.join('\n');if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s).catch(()=>prompt('기록',s));else prompt('기록',s);};bar.appendChild(copy);
+  const toggle=document.createElement('button');toggle.type='button';toggle.textContent='접기';toggle.onclick=function(){pre.hidden=!pre.hidden;toggle.textContent=pre.hidden?'펼치기':'접기';};bar.appendChild(toggle);
+  pre=document.createElement('pre');pre.style.cssText='margin:0;padding:6px;max-height:30vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;';
+  panel.appendChild(bar);panel.appendChild(pre);document.body.appendChild(panel);
+  ['loadDashboard','loadInsideMembers','applyRows','refresh','v218FetchDashboard'].forEach(wrap);
+  log('진단 시작','1페이지에서 다른 태블릿 고립 지정 시험');
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+}catch(e){console.warn('SYNC-DIAG',e);}
+})();
+</script>
 </body>
 </html>
