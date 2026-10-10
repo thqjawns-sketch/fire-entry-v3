@@ -6998,7 +6998,9 @@ async function loadDashboard(
       data.dashboard;
 
     /* V3-28: dashboard 응답에 함께 실려온 시트 전술층 적용 */
+    const v3PrevTacticalMap=JSON.stringify((typeof v3LoadTacticalFloors==='function')?v3LoadTacticalFloors():{});
     if(typeof v3ApplyTacticalSheetMap==='function') v3ApplyTacticalSheetMap(data.tacticalFloors||{});
+    const v3TacticalChanged=v3PrevTacticalMap!==JSON.stringify((typeof v3LoadTacticalFloors==='function')?v3LoadTacticalFloors():{});
 
     /* R16G: 지휘상황판 마지막 서버 성공시각 */
     window.__v29LastSuccessAt = Date.now();
@@ -7139,7 +7141,7 @@ async function loadDashboard(
 
     /* R16E: 10초 자동동기화 때 실제 상태 변화가 없으면 DOM 전체를 다시 만들지 않는다.
        체류시간/재확인 카운트는 아래 로컬 타이머가 별도로 갱신한다. */
-    if(!isAutoRefresh || v251PrevSignature !== v251NextSignature){
+    if(!isAutoRefresh || v251PrevSignature !== v251NextSignature || v3TacticalChanged){
       v28DrawTeamStatus(window.__dashboardInsideMembers);
       drawDashboardInside(window.__dashboardInsideMembers);
     }
@@ -7299,7 +7301,7 @@ function v28DrawTeamStatus(list){
       '<div class="v16TeamRow '+teamCls+'">'+
         '<div class="v16TeamCell"><span class="v16TeamBadge">'+escapeHtml(t.team)+'</span></div>'+
         '<div class="v16TeamCell"><span class="v16RoundBadge">'+Number(t.activityNo||1)+'차</span></div>'+
-        '<div class="v16TeamCell">'+smallBadge(floor,'floorMini '+v23FloorClass(floor))+'</div>'+
+        '<div class="v16TeamCell">'+smallBadge(floor,'floorMini '+v23FloorClass(floor))+((typeof v3TacticalBadgeHtml==='function')?v3TacticalBadgeHtml(floor):'')+'</div>'+
         '<div class="v16TeamCell v16DetailCell" title="'+escapeHtml(detail)+'">'+smallBadge(detail,'v16DetailBadge')+'</div>'+
         '<div class="v16TeamCell">'+smallBadge(direction,'v16DirectionBadge')+'</div>'+
         '<div class="v16TeamCell v16Count">'+Number(t.count||0)+'명</div>'+
