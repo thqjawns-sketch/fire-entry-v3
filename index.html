@@ -11818,7 +11818,7 @@ try{
  function canRead(){
    return visible()&&!busy&&typeof v249R8WriteBusy==='function'&&!v249R8WriteBusy()&&
      !window.insideLoading&&typeof insideLoading!=='undefined'&&!insideLoading&&
-     !document.querySelector('#dashboardDetailOverlay:not([style*="display: none"])');
+     !(function(){const el=document.getElementById('dashboardDetailOverlay');return !!(el&&getComputedStyle(el).display!=='none'&&el.children.length);})();
  }
  function signature(members){
    return JSON.stringify((members||[]).map(m=>({id:String(m.memberId||''),name:m.memberName||'',team:m.team||'',activityNo:m.activityNo||'',direction:m.direction||'',floor:m.floor||'',detail:m.detail||'',entryTime:m.entryTime||'',isolated:!!m.isolated,safetyCheckedAt:m.safetyCheckedAt||''})).sort((a,b)=>a.id.localeCompare(b.id)));
