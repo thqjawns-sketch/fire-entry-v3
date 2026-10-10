@@ -5857,6 +5857,8 @@ async function loadInsideMembers(isAutoRefresh = false){
 
 
     updateV23Summary(data.members);
+    // SYNC1: 1페이지의 정상 서버조회 결과도 같은 브라우저의 다른 탭에 전달.
+    if(typeof v16XPublishTest4==='function')v16XPublishTest4(window.__dashboardInsideMembers);
 
     const insideInfo=document.getElementById("insideRefreshInfo");
     if(insideInfo){
@@ -6427,6 +6429,8 @@ async function batchExitMembers(){
           !succeededIds.has(String(m.memberId||"").trim())
         );
         window.__insideMembers=window.__dashboardInsideMembers;
+        // SYNC1: 철수 확정 결과를 다른 탭의 1페이지 카드에 즉시 전파.
+        if(typeof v16XPublishTest4==='function')v16XPublishTest4(window.__dashboardInsideMembers);
         if(typeof drawDashboardInside==="function") drawDashboardInside(window.__dashboardInsideMembers);
         if(typeof drawDashboardTeamSummary==="function") drawDashboardTeamSummary(window.__dashboardInsideMembers);
         if(typeof window.v16RRefreshActiveViews==="function") window.v16RRefreshActiveViews();
@@ -6490,14 +6494,27 @@ try{
     v16XTest4Channel.onmessage=(ev)=>{
       const msg=ev&&ev.data;
       if(!msg||msg.type!=='ACTIVE_MEMBERS'||!Array.isArray(msg.members))return;
+      // SYNC1: 다른 현장의 대원정보가 현재 현장에 섞이지 않도록 차단한다.
+      const activeSite=String(document.getElementById('site')?.value||'');
+      if(!activeSite||!msg.siteId||String(msg.siteId)!==activeSite)return;
+      // 로컬 투입/철수 처리 중에는 외부 스냅샷으로 입력 화면을 덮어쓰지 않는다.
+      if(typeof v249R8WriteBusy==='function'&&v249R8WriteBusy())return;
+      if(typeof entrySubmitting!=='undefined'&&entrySubmitting)return;
+      if(typeof exitSubmitting!=='undefined'&&exitSubmitting)return;
+      const remoteAt=Number(msg.at)||0;
+      if(remoteAt && remoteAt<(window.__sync1LastAppliedAt||0))return;
+      window.__sync1LastAppliedAt=remoteAt||Date.now();
       window.__v16XTest4RemoteMembers=msg.members;window.__dashboardInsideMembers=msg.members;window.__insideMembers=window.__dashboardInsideMembers;
-      if(document.getElementById('test4Page')?.style.display==='block') drawTest4Members(msg.members);if(document.getElementById('mainPage')?.style.display!=='none')v16TRenderInsideFromCache();
+      if(document.getElementById('test4Page')?.style.display==='block')drawTest4Members(msg.members);
+      if(document.getElementById('mainPage')?.style.display!=='none')v16TRenderInsideFromCache();
     };
   }
 }catch(e){console.warn('TEST4 channel init',e);}
 function v16XPublishTest4(list){
   if(!v16XTest4Channel||!Array.isArray(list))return;
-  try{v16XTest4Channel.postMessage({type:'ACTIVE_MEMBERS',members:list,at:Date.now()});}catch(e){console.warn('TEST4 publish',e);}
+  const siteId=String(document.getElementById('site')?.value||'');
+  if(!siteId)return;
+  try{v16XTest4Channel.postMessage({type:'ACTIVE_MEMBERS',siteId:siteId,members:list,at:Date.now()});}catch(e){console.warn('TEST4 publish',e);}
 }
 function drawTest4Members(list){
   const area=document.getElementById('test4Inside'); if(!area)return;
