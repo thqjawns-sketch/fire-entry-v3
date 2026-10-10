@@ -9695,7 +9695,11 @@ function r17pRenderCurrentTeamPage(){
         const detText=detail(t.detail);
         const showDetail=(!detText||detText==='미지정'||/세부\s*장소\s*미지정/i.test(detText))?'-':detText;
         const cnt=(t.members||[]).length;
-        return '<span class="r17bTeam '+v29TeamCss(t.team)+'"><span class="r17bTeamMain"><b>'+E(t.team)+'</b><small>'+cnt+'명</small></span>'+(showDetail!=='-'?'<em>'+E(showDetail)+'</em>':'')+'</span>';
+        const isolatedCount=(t.members||[]).filter(isolatedOf).length;
+        const safetyCount=(t.members||[]).filter(m=>safetyDueOf(m)&&!isolatedOf(m)).length;
+        const warnings=(isolatedCount?'<span class="r17bTeamAlert iso">고립 '+isolatedCount+'명</span>':'')+
+          (safetyCount?'<span class="r17bTeamAlert safe">안전확인 '+safetyCount+'명</span>':'');
+        return '<span class="r17bTeam '+v29TeamCss(t.team)+'"><span class="r17bTeamMain"><b>'+E(t.team)+'</b><small>'+cnt+'명</small></span>'+(showDetail!=='-'?'<em>'+E(showDetail)+'</em>':'')+warnings+'</span>';
       }).join('');
 
       const floorMembers=here.flatMap(t=>t.members||[]);
@@ -11866,6 +11870,33 @@ if ('serviceWorker' in navigator) {
 }
 #teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamRows{
   width:84%!important;max-height:85%!important
+}
+/* Floor diagram: per-team alerts stay inside their own team badge. */
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeam{
+ height:auto!important;min-height:25px!important;max-width:100%!important;
+ display:inline-flex!important;flex-wrap:wrap!important;gap:3px 6px!important;
+ padding:4px 7px!important;box-sizing:border-box!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert{
+ display:inline-flex!important;align-items:center!important;white-space:nowrap!important;
+ padding:3px 6px!important;border-radius:5px!important;
+ font-size:19px!important;line-height:1.1!important;font-weight:950!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.iso{
+ background:#b91c1c!important;color:#fff!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.safe{
+ background:#f59e0b!important;color:#422006!important
+}
+/* Fit complete 3D geometry inside the right panel, including its rear/right edges. */
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bBuilding{
+ left:50%!important;width:91%!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bFloor{
+ left:12%!important;width:78%!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamRows{
+ left:4%!important;width:88%!important;max-height:90%!important
 }
 </style>
 <script id="v3-page3-fixed-stage-1920-js">
