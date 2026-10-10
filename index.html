@@ -11912,23 +11912,14 @@ if ('serviceWorker' in navigator) {
 #teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.safe{
   animation:r17bSafetySoftPulse 4s ease-in-out infinite!important
 }
+/* Animate filter and shadow instead of background, which is fixed by !important. */
 @keyframes r17bIsolationSoftPulse{
-  0%,100%{background:#b91c1c;box-shadow:0 0 0 0 rgba(185,28,28,0)}
-  50%{background:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.22)}
+  0%,100%{filter:brightness(1);box-shadow:0 0 0 0 rgba(185,28,28,0);opacity:1}
+  50%{filter:brightness(1.35);box-shadow:0 0 0 4px rgba(220,38,38,.34);opacity:.82}
 }
 @keyframes r17bSafetySoftPulse{
-  0%,100%{background:#f59e0b;box-shadow:0 0 0 0 rgba(245,158,11,0)}
-  50%{background:#fbbf24;box-shadow:0 0 0 2px rgba(245,158,11,.13)}
-}
-/* Earlier badge rules force a fixed background with !important.
-   Animate the actual background property at matching priority. */
-@keyframes r17bIsolationSoftPulse{
-  0%,100%{background:#b91c1c!important;box-shadow:0 0 0 0 rgba(185,28,28,0)}
-  50%{background:#dc2626!important;box-shadow:0 0 0 3px rgba(220,38,38,.22)}
-}
-@keyframes r17bSafetySoftPulse{
-  0%,100%{background:#f59e0b!important;box-shadow:0 0 0 0 rgba(245,158,11,0)}
-  50%{background:#fbbf24!important;box-shadow:0 0 0 2px rgba(245,158,11,.13)}
+  0%,100%{filter:brightness(1);box-shadow:0 0 0 0 rgba(245,158,11,0);opacity:1}
+  50%{filter:brightness(1.22);box-shadow:0 0 0 3px rgba(245,158,11,.25);opacity:.88}
 }
 @media(prefers-reduced-motion:reduce){
   #teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.iso,
