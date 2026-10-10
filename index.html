@@ -8728,8 +8728,11 @@ async function r16mMemberSafety(id,btn){
     const hit=(d.succeeded||[]).find(x=>String(x.id||x.memberId)===String(id));
     m.safetyCheckedAt=(hit&&hit.checkedAt)||new Date().toISOString();
     r16mApplyMemberSafetyButton(btn,m);
-    if(typeof applyTeamSafetyButtons==='function')applyTeamSafetyButtons();
-    if(typeof summary==='function')summary();
+    /* SAFETY_REFRESH_PILOT_V1: post() already updates team buttons and summary on confirmed success. */
+    if(new URLSearchParams(location.search).get('insidesync')!=='1'){
+      if(typeof applyTeamSafetyButtons==='function')applyTeamSafetyButtons();
+      if(typeof summary==='function')summary();
+    }
     if(typeof refresh==='function')setTimeout(refresh,0);
   }catch(e){console.error('대원 안전확인 오류',e);btn.textContent=old;}
   finally{btn.disabled=false;r16mApplyMemberSafetyButton(btn,m);}
