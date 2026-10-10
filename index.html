@@ -11751,6 +11751,22 @@ if ('serviceWorker' in navigator) {
 #teamBoardPageV29.r17pBoard .r17pLoc{font-size:12px!important;padding:3px 7px!important}
 #teamBoardPageV29.r17pBoard .r17pDetailBanner{font-size:19px!important;padding:4px 10px!important}
 #teamBoardPageV29.r17pBoard .r17pMemberSlot .v16PCommonMemberCard{padding:4px 9px!important;gap:3px!important}
+/* Floor-board columns aligned to the seven equal-width people summary tiles:
+   floor selector = 1 tile; activity details = 2 tiles; diagram = remaining 4 tiles.
+   The summary tiles occupy the same inner 1920px stage content width. */
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pLocationGrid{
+  grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,4fr)!important;
+  gap:0!important;
+  min-width:0!important;
+  padding:0!important;
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pFloorPanel,
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pPlanPanel,
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pFloorSummary{
+  min-width:0!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+}
 /* Alert must be positioned in the scaled stage, not fixed to the viewport. */
 #teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlert{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;width:1650px!important;max-height:518px!important;padding:24px 46px!important}
 
