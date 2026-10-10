@@ -11671,47 +11671,8 @@ function r17pRenderCurrentTeamPage(){
 .v325RecentDetailButtons{display:flex;gap:6px;flex-wrap:wrap}
 .v325RecentDetailBtn{width:auto!important;margin:0!important;padding:7px 10px!important;border:1px solid #b8c7d8!important;border-radius:9px!important;background:#f4f8fc!important;color:#173d67!important;font-size:13px!important;font-weight:900!important}
 
-/* 휴대폰/태블릿 세로: 3페이지 원본 가로폭은 유지하고 페이지 안에서 좌우 스와이프 */
-@media (max-width:1180px){
-  #teamBoardPageV29{
-    width:100vw!important;
-    min-width:0!important;
-    max-width:100vw!important;
-    margin-left:calc(50% - 50vw)!important;
-    margin-right:0!important;
-    padding-left:0!important;
-    padding-right:0!important;
-    overflow-x:auto!important;
-    overflow-y:visible!important;
-    -webkit-overflow-scrolling:touch;
-    overscroll-behavior-x:contain;
-    touch-action:pan-x pan-y!important;
-  }
-  #teamBoardPageV29 > *{
-    width:1440px!important;
-    min-width:1440px!important;
-    max-width:1440px!important;
-    box-sizing:border-box!important;
-  }
-}
+/* Legacy 1440px mobile pan removed: page 3 uses one stage viewport. */
 </style>
-
-<style id="v3-18-tablet-horizontal-pan">
-/* 태블릿: 모니터용 정보/크기를 유지하고 화면 자체를 좌우로 이동 */
-@media (max-width:1180px){
-  html,body{
-    overflow-x:auto!important;
-    overscroll-behavior-x:contain;
-    -webkit-overflow-scrolling:touch;
-  }
-  /* V3-25: 실제 좌우 스크롤은 위의 page3 전용 스크롤 컨테이너가 담당 */
-  #teamBoardPageV29,
-  #teamBoardPageV29 *{
-    touch-action:pan-x pan-y;
-  }
-}
-</style>
-
 
 <script id="v3-21-pwa-register">
 if ('serviceWorker' in navigator) {
@@ -11731,50 +11692,6 @@ if ('serviceWorker' in navigator) {
 
 
 <!-- V3-31: 휴대폰/태블릿 세로 3페이지 좌우 이동 복구 -->
-<style id="v3-31-page3-mobile-horizontal-pan-fix">
-@media (max-width:1180px){
-  #teamBoardPageV29.r17pBoard{
-    overflow-x:auto!important;
-    overflow-y:hidden!important;
-    -webkit-overflow-scrolling:touch!important;
-    overscroll-behavior-x:contain!important;
-    touch-action:pan-x pan-y!important;
-    scrollbar-width:auto;
-  }
-  #teamBoardPageV29.r17pBoard > .r17pHeader,
-  #teamBoardPageV29.r17pBoard > .r17pMain{
-    width:1440px!important;
-    min-width:1440px!important;
-    max-width:none!important;
-  }
-}
-</style>
-<script id="v3-31-page3-mobile-horizontal-pan-fix-js">
-(function(){
-  const root=document.getElementById('teamBoardPageV29');
-  if(!root || root.dataset.v331Pan==='1') return;
-  root.dataset.v331Pan='1';
-  let sx=0, sy=0, sl=0, active=false, horizontal=false;
-  root.addEventListener('touchstart',function(e){
-    if(!e.touches || e.touches.length!==1) return;
-    const t=e.touches[0];
-    sx=t.clientX; sy=t.clientY; sl=root.scrollLeft; active=true; horizontal=false;
-  },{passive:true});
-  root.addEventListener('touchmove',function(e){
-    if(!active || !e.touches || e.touches.length!==1) return;
-    const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy;
-    if(!horizontal && Math.abs(dx)>8 && Math.abs(dx)>Math.abs(dy)) horizontal=true;
-    if(horizontal){
-      root.scrollLeft=sl-dx;
-      if(e.cancelable) e.preventDefault();
-    }
-  },{passive:false});
-  const end=function(){active=false;horizontal=false;};
-  root.addEventListener('touchend',end,{passive:true});
-  root.addEventListener('touchcancel',end,{passive:true});
-})();
-</script>
-
 <!-- SYNC_DIAG_V1_OPTIN -->
 <script>
 /* 선택형 진단: URL에 ?syncdiag=1, 종료: ?syncdiag=0. 기존 기능 변경 없음. */
