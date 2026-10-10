@@ -8989,6 +8989,9 @@ function v3BuildingDisplayFloors(activeFloors,maxSlots=7){
 }
 function v3RefreshAfterTacticalChange(){
   try{
+    if(typeof v28DrawTeamStatus==='function')v28DrawTeamStatus(window.__dashboardInsideMembers||[]);
+  }catch(e){}
+  try{
     if(typeof drawDashboardInside==='function')drawDashboardInside(window.__dashboardInsideMembers||[]);
   }catch(e){}
   try{
