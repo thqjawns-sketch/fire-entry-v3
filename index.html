@@ -10104,7 +10104,12 @@ function r17pRenderCurrentTeamPage(){
   const refreshMs=((window.V17_STAY_POLICY&&window.V17_STAY_POLICY.refreshSeconds)||10)*1000;
   setInterval(function(){
     const page=document.getElementById('teamBoardPageV29');
-    if(page&&page.style.display!=='none'&&!document.hidden)refreshTeamBoardV29();
+    if(page&&page.style.display!=='none'&&!document.hidden){
+      /* DASHBOARD_TIMER_PILOT_V1: when the common 10s dashboard timer is running,
+         it already refreshes the visible command board. Keep fallback when stopped. */
+      const sharedTimerPilot=new URLSearchParams(location.search).get('insidesync')==='1';
+      if(!sharedTimerPilot || !dashboardAutoRefreshTimer)refreshTeamBoardV29();
+    }
   },refreshMs);
   document.addEventListener('DOMContentLoaded',syncStation);
 })();
