@@ -11906,20 +11906,21 @@ if ('serviceWorker' in navigator) {
   align-content:center!important;flex-wrap:wrap!important;
   max-height:90%!important
 }
+/* Match the existing dangerBlink card cadence: alternating strong/white warning.
+   Only the warning chips blink; the team identity stays stable. */
 #teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.iso{
-  animation:r17bIsolationSoftPulse 3s ease-in-out infinite!important
+  animation:r17bIsolationCardBlink 1s steps(1,end) infinite!important
 }
 #teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.safe{
-  animation:r17bSafetySoftPulse 4s ease-in-out infinite!important
+  animation:r17bSafetyCardBlink 1s steps(1,end) infinite!important
 }
-/* Animate filter and shadow instead of background, which is fixed by !important. */
-@keyframes r17bIsolationSoftPulse{
-  0%,100%{filter:brightness(1);box-shadow:0 0 0 0 rgba(185,28,28,0);opacity:1}
-  50%{filter:brightness(1.35);box-shadow:0 0 0 4px rgba(220,38,38,.34);opacity:.82}
+@keyframes r17bIsolationCardBlink{
+  0%,100%{opacity:1;filter:none;box-shadow:inset 0 0 0 2px #7f1d1d,0 0 0 2px rgba(185,28,28,.3)}
+  50%{opacity:.45;filter:brightness(1.6);box-shadow:inset 0 0 0 2px #fff,0 0 0 2px rgba(185,28,28,.1)}
 }
-@keyframes r17bSafetySoftPulse{
-  0%,100%{filter:brightness(1);box-shadow:0 0 0 0 rgba(245,158,11,0);opacity:1}
-  50%{filter:brightness(1.22);box-shadow:0 0 0 3px rgba(245,158,11,.25);opacity:.88}
+@keyframes r17bSafetyCardBlink{
+  0%,100%{opacity:1;filter:none;box-shadow:inset 0 0 0 2px #b45309,0 0 0 2px rgba(245,158,11,.3)}
+  50%{opacity:.45;filter:brightness(1.65);box-shadow:inset 0 0 0 2px #fff,0 0 0 2px rgba(245,158,11,.1)}
 }
 @media(prefers-reduced-motion:reduce){
   #teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.iso,
