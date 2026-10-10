@@ -6868,13 +6868,25 @@ isAutoRefresh = true이면
 ===================================================== */
 
 let v218DashboardCache=null,v218DashboardCacheAt=0,v218DashboardCacheSite="";
+/* SHARED_DASHBOARD_PILOT_V1: only share an already-running request in the opt-in test.
+   Existing cache, force refresh and page renderers retain their original behavior. */
+let v218DashboardInflight=null,v218DashboardInflightSite="";
 async function v218FetchDashboard(site,force){
   const now=Date.now();
   if(!force&&v218DashboardCache&&v218DashboardCacheSite===site&&(now-v218DashboardCacheAt)<2000)return v218DashboardCache;
-  const response=await fetch(API+"?action=dashboard&site="+encodeURIComponent(site)+"&t="+now,{cache:"no-store"});
-  const data=await response.json();
-  if(data&&data.success){v218DashboardCache=data;v218DashboardCacheAt=Date.now();v218DashboardCacheSite=site;}
-  return data;
+  const sharedPilot=new URLSearchParams(location.search).get('insidesync')==='1';
+  if(sharedPilot&&v218DashboardInflight&&v218DashboardInflightSite===site)return v218DashboardInflight;
+  const request=(async()=>{
+    const response=await fetch(API+"?action=dashboard&site="+encodeURIComponent(site)+"&t="+now,{cache:"no-store"});
+    const data=await response.json();
+    if(data&&data.success){v218DashboardCache=data;v218DashboardCacheAt=Date.now();v218DashboardCacheSite=site;}
+    return data;
+  })();
+  if(!sharedPilot)return request;
+  v218DashboardInflight=request;
+  v218DashboardInflightSite=site;
+  try{return await request;}
+  finally{if(v218DashboardInflight===request){v218DashboardInflight=null;v218DashboardInflightSite="";}}
 }
 
 function v251R16EStructureSignature(list){
