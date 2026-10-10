@@ -11705,6 +11705,18 @@ if ('serviceWorker' in navigator) {
 }
 #teamBoardPageV29.r17pBoard>.r17pHeader{height:99px!important;min-height:99px!important;max-height:99px!important}
 #teamBoardPageV29.r17pBoard>.r17pMain{height:981px!important;min-height:981px!important;max-height:981px!important}
+/* Freeze key stage dimensions at 1920x1080 design pixels. */
+#teamBoardPageV29.r17pBoard .r17pMain{height:981px!important;grid-template-rows:189px minmax(0,1fr)!important;gap:8px!important;padding:8px 22px 10px!important}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pMain{grid-template-rows:189px 56px minmax(0,1fr)!important}
+#teamBoardPageV29.r17pBoard .r17pSectionTitle{height:46px!important}
+#teamBoardPageV29.r17pBoard .r17pPeopleStats{height:calc(100% - 46px)!important}
+#teamBoardPageV29.r17pBoard .r17pTeamSection{grid-template-rows:56px minmax(0,1fr)!important}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pTeamSection{grid-template-rows:56px!important}
+#teamBoardPageV29.r17pBoard .r17pTeamTop{height:56px!important}
+#teamBoardPageV29.r17pBoard .r17pLocationSection{grid-template-rows:56px minmax(0,1fr)!important}
+/* Alert must be positioned in the scaled stage, not fixed to the viewport. */
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlert{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;width:1650px!important;max-height:518px!important;padding:24px 46px!important}
+
 </style>
 <script id="v3-page3-fixed-stage-1920-js">
 (function(){
