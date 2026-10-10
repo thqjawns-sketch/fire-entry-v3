@@ -6788,6 +6788,8 @@ function v249R15BMainVisible(){
 }
 
 function v249R15BRefreshMain(reason){
+  /* INSIDE_SYNC_PILOT_V2: 시험 자동반영 중에는 중복 current 자동조회만 생략. 수동 새로고침은 유지. */
+  if(new URLSearchParams(location.search).get('insidesync')==='1') return false;
   if(!v249R15BMainVisible() || document.hidden || v249R8WriteBusy() || insideLoading) return false;
   const now=Date.now();
   if((now-v249R15BMainRefreshAt)<V249_R15B_MAIN_REFRESH_GAP) return false;
