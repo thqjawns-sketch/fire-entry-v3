@@ -11692,6 +11692,34 @@ if ('serviceWorker' in navigator) {
 
 
 <!-- V3-31: 휴대폰/태블릿 세로 3페이지 좌우 이동 복구 -->
+<!-- V3 PAGE3 FIXED STAGE (work branch only) -->
+<style id="v3-page3-fixed-stage-1920">
+#teamBoardPageV29.r17pBoard{
+  position:fixed!important;inset:auto!important;
+  left:var(--p3-left,0px)!important;top:var(--p3-top,0px)!important;
+  width:1920px!important;min-width:1920px!important;max-width:1920px!important;
+  height:1080px!important;min-height:1080px!important;max-height:1080px!important;
+  margin:0!important;padding:0!important;overflow:hidden!important;
+  transform-origin:top left!important;transform:scale(var(--p3-scale,1))!important;
+  touch-action:manipulation!important;
+}
+#teamBoardPageV29.r17pBoard>.r17pHeader{height:99px!important;min-height:99px!important;max-height:99px!important}
+#teamBoardPageV29.r17pBoard>.r17pMain{height:981px!important;min-height:981px!important;max-height:981px!important}
+</style>
+<script id="v3-page3-fixed-stage-1920-js">
+(function(){
+  const board=document.getElementById('teamBoardPageV29');if(!board)return;
+  function fit(){
+    const w=window.innerWidth,h=window.innerHeight;
+    const k=Math.min(w/1920,h/1080);
+    board.style.setProperty('--p3-scale',String(k));
+    board.style.setProperty('--p3-left',Math.max(0,(w-1920*k)/2)+'px');
+    board.style.setProperty('--p3-top',Math.max(0,(h-1080*k)/2)+'px');
+  }
+  window.addEventListener('resize',fit,{passive:true});fit();
+})();
+</script>
+
 <!-- SYNC_DIAG_V1_OPTIN -->
 <script>
 /* 선택형 진단: URL에 ?syncdiag=1, 종료: ?syncdiag=0. 기존 기능 변경 없음. */
