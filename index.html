@@ -9381,10 +9381,22 @@ function r17pRenderCurrentTeamPage(){
           escapeAttr(String(m.memberId||m.id||''))+'" data-r17-member-name="'+
           escapeAttr(String(m.memberName||m.name||''))+'">'+v16NMemberCardHtml(cardMember)+'</div>';
       }).join('');
+      // Show every affected member name inside their own team, below the team details.
+      const isolatedNames=[],checkNames=[];
+      (t.members||[]).forEach(m=>{
+        const state=currentState(m);
+        const name=String(m.memberName||m.name||'').trim()||'이름 미상';
+        if(state.isolated)isolatedNames.push(name);
+        else if(state.due)checkNames.push(name);
+      });
+      const safetyBanners=(isolatedNames.length?
+        '<div class="r17pTeamSafetyBanner isolated">고립 '+isolatedNames.length+'명 · '+isolatedNames.map(E).join(' · ')+'</div>':'')+
+        (checkNames.length?
+        '<div class="r17pTeamSafetyBanner due">안전확인 '+checkNames.length+'명 · '+checkNames.map(E).join(' · ')+'</div>':'');
       return '<div class="r17pTeamRow '+css+'" style="flex-grow:'+Math.min(R17P_MAX_ROWS_PER_SCREEN,r17pRowsForTeam(t))+';flex-basis:0"><div class="r17pTeamHead">'+
         '<div class="r17pTeamInfoLine"><span class="r17pTeamName '+css+'">'+E(t.team)+'</span><span class="r17pTeamCount">'+Number(t.count||((t.members||[]).length)||0)+'명</span></div>'+
         '<div class="r17pTeamInfoLine"><span class="r17pLoc">'+E(dir)+'</span><span class="r17pLoc">'+E(floor)+'</span></div>'+
-        '<div class="r17pTeamInfoLine"><span class="r17pDetailBanner">세부장소 : '+E(det)+'</span></div></div>'+
+        '<div class="r17pTeamInfoLine"><span class="r17pDetailBanner">세부장소 : '+E(det)+'</span></div>'+safetyBanners+'</div>'+
         '<div class="r17pMembers">'+cards+'</div></div>';
     }).join('');
     fitBoard();
@@ -11806,6 +11818,19 @@ if ('serviceWorker' in navigator) {
   font-size:28px!important;margin:0!important
 }
 #teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlertAcknowledged .r17pAlertText small{display:none!important}
+/* Page 3: full affected-member names, directly under their own team details. */
+#teamBoardPageV29.r17pBoard .r17pTeamHead{overflow:hidden!important}
+#teamBoardPageV29.r17pBoard .r17pTeamSafetyBanner{
+ display:block;width:100%;box-sizing:border-box;white-space:normal;
+ overflow-wrap:anywhere;line-height:1.15;font-size:21px;font-weight:950;
+ border-radius:6px;padding:3px 6px;margin-top:3px;text-align:left;
+}
+#teamBoardPageV29.r17pBoard .r17pTeamSafetyBanner.isolated{
+ background:#b91c1c;color:#fff;border:1px solid #7f1d1d
+}
+#teamBoardPageV29.r17pBoard .r17pTeamSafetyBanner.due{
+ background:#ffb74d;color:#542500;border:1px solid #d97706
+}
 </style>
 <script id="v3-page3-fixed-stage-1920-js">
 (function(){
