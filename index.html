@@ -9278,8 +9278,12 @@ window.v29UpdateRefreshClock=function(){
     }
     const alert=document.getElementById('cmdAlertBar');
     if(alert){
-      if(!urgent.length){alert.className='r17pAlert';alert.innerHTML='';}
-      else{
+      if(!urgent.length){
+        alert.className='r17pAlert';
+        alert.innerHTML='';
+        window.r17pAlertAcknowledgedKey='';
+        window.r17pAlertSeenKey='';
+      }else{
         const meta=typeof v23LoadMeta==='function'?v23LoadMeta():{};
         const grouped=[];
         urgent.forEach(x=>{
@@ -9290,8 +9294,22 @@ window.v29UpdateRefreshClock=function(){
           g.names.push(v29CleanName(x.m)+(x.st.isolated?' · 고립':''));
         });
         const allNames=grouped.map(g=>g.team+' '+g.names.join(' · '));
-        alert.className='r17pAlert show';
-        alert.innerHTML='<span class="r17pAlertIcon">⚠</span><span class="r17pAlertText"><b>즉시확인 대상 '+urgent.length+'명</b><small>'+allNames.map(E).join('<span class="r17AlertSep">　│　</span>')+'</small></span>';
+        // Acknowledgement only changes this tablet's display; it never changes member safety.
+        // A new member or new isolation state restores the full-size warning.
+        const alertKey=urgent.map(x=>String(x.m.memberId)+':'+(x.st.isolated?'1':'0')).sort().join('|');
+        window.r17pAlertSeenKey=alertKey;
+        const acknowledged=window.r17pAlertAcknowledgedKey===alertKey;
+        alert.className='r17pAlert show'+(acknowledged?' r17pAlertAcknowledged':'');
+        alert.innerHTML='<span class="r17pAlertIcon">⚠</span><span class="r17pAlertText"><b>즉시확인 대상 '+urgent.length+'명</b><small>'+allNames.map(E).join('<span class="r17AlertSep">　│　</span>')+'</small></span>'+
+          (acknowledged?'':'<button type="button" class="r17pAlertAckBtn">경보 확인</button>');
+        if(!acknowledged){
+          const ackButton=alert.querySelector('.r17pAlertAckBtn');
+          if(ackButton)ackButton.onclick=function(){
+            window.r17pAlertAcknowledgedKey=window.r17pAlertSeenKey;
+            alert.classList.add('r17pAlertAcknowledged');
+            this.remove();
+          };
+        }
       }
     }
   };
@@ -11770,6 +11788,24 @@ if ('serviceWorker' in navigator) {
 /* Alert must be positioned in the scaled stage, not fixed to the viewport. */
 #teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlert{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;width:1650px!important;max-height:518px!important;padding:24px 46px!important}
 
+/* Page 3 alert acknowledgement: keep original full-size warning untouched. */
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlert.show{pointer-events:auto!important}
+#teamBoardPageV29.r17pBoard #cmdAlertBar .r17pAlertAckBtn{
+  position:absolute;right:18px;bottom:10px;border:1px solid rgba(255,255,255,.75);
+  background:rgba(255,255,255,.96);color:#871b16;border-radius:10px;
+  padding:9px 17px;font-size:22px;font-weight:900;cursor:pointer;z-index:1
+}
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlertAcknowledged{
+  left:50%!important;top:112px!important;transform:translateX(-50%)!important;
+  width:900px!important;min-height:0!important;height:auto!important;
+  max-height:80px!important;padding:10px 24px!important;gap:12px!important;
+  animation:none!important;overflow:hidden!important
+}
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlertAcknowledged .r17pAlertIcon{font-size:30px!important}
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlertAcknowledged .r17pAlertText b{
+  font-size:28px!important;margin:0!important
+}
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlertAcknowledged .r17pAlertText small{display:none!important}
 </style>
 <script id="v3-page3-fixed-stage-1920-js">
 (function(){
