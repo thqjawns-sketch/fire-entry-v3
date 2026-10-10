@@ -11743,6 +11743,13 @@ if ('serviceWorker' in navigator) {
 #teamBoardPageV29.r17pBoard.r17pFloorMode .r17pFloorPanel{grid-column:1!important}
 #teamBoardPageV29.r17pBoard.r17pFloorMode .r17pPlanPanel{grid-column:2!important}
 #teamBoardPageV29.r17pBoard.r17pFloorMode .r17pFloorSummary{grid-column:3!important}
+/* Keep the four-card grid and card padding at fixed monitor design units. */
+#teamBoardPageV29.r17pBoard .r17pTeamRow .r17pMembers{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important}
+#teamBoardPageV29.r17pBoard .r17pTeamHead{padding:3px 9px!important}
+#teamBoardPageV29.r17pBoard .r17pTeamName{font-size:19px!important;padding:5px 11px!important}
+#teamBoardPageV29.r17pBoard .r17pLoc{font-size:12px!important;padding:3px 7px!important}
+#teamBoardPageV29.r17pBoard .r17pDetailBanner{font-size:19px!important;padding:4px 10px!important}
+#teamBoardPageV29.r17pBoard .r17pMemberSlot .v16PCommonMemberCard{padding:4px 9px!important;gap:3px!important}
 /* Alert must be positioned in the scaled stage, not fixed to the viewport. */
 #teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlert{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;width:1650px!important;max-height:518px!important;padding:24px 46px!important}
 
