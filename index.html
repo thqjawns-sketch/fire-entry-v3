@@ -9061,36 +9061,7 @@ function v3OpenTacticalFloorDialog(floor){
 #teamBoardPageV29 .r17fTacticalAction{cursor:pointer;user-select:none}
 #teamBoardPageV29 .r17fTacticalAction:focus{outline:2px solid #1677ff;outline-offset:1px}
 </style>
-<style id="v3-35-floor-safety-visual">
-/* V3-35: 층별현황 경고 위치/조별 강조. 기존 조 색상 및 전술층 유지 */
-#teamBoardPageV29 .r17bFloorAlert{
-  right:auto!important;left:calc(-1 * 12%)!important;top:calc(61% + 21px)!important;
-  transform:none!important;align-items:flex-start!important;gap:3px!important;
-  z-index:30!important;
-}
-#teamBoardPageV29 .r17bFloorAlert span{
-  font-size:clamp(10px,.78vw,14px)!important;font-weight:950!important;
-  padding:4px 7px!important;border-radius:6px!important;
-  box-shadow:0 2px 5px rgba(15,23,42,.18)!important;
-}
-#teamBoardPageV29 .r17bFloorAlert .iso{background:#fff1f2!important;color:#b91c1c!important}
-#teamBoardPageV29 .r17bFloorAlert .safe{background:#fff7ed!important;color:#9a3412!important}
-#teamBoardPageV29 .r17bFloor.v3IsoFloor .r17bFront{
-  outline:3px solid rgba(220,38,38,.75)!important;outline-offset:-2px!important;
-}
-#teamBoardPageV29 .r17bFloor.v3SafetyFloor .r17bFront{
-  outline:3px solid rgba(234,138,22,.8)!important;outline-offset:-2px!important;
-}
-#teamBoardPageV29 .r17bTeam.v3IsoTeam{
-  box-shadow:0 0 0 3px #dc2626,0 2px 7px rgba(185,28,28,.25)!important;
-}
-#teamBoardPageV29 .r17bTeam.v3SafetyTeam{
-  box-shadow:0 0 0 3px #f59e0b,0 2px 7px rgba(180,83,9,.18)!important;
-}
-#teamBoardPageV29 #cmdAlertBar.r17pAlert{
-  background:rgba(132,18,14,.78)!important;
-}
-</style>
+
 
 <script id="r17r-command-shared-helpers">
 function v29CleanName(m){
@@ -11930,5 +11901,35 @@ try{
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 </script>
+<style id="v3-35-floor-safety-visual">
+/* V3-35: 층별현황 경고 위치/조별 강조. 기존 조 색상 및 전술층 유지 */
+#teamBoardPageV29 .r17bFloorAlert{
+  right:auto!important;left:calc(-1 * 12%)!important;top:calc(61% + 21px)!important;
+  transform:none!important;align-items:flex-start!important;gap:3px!important;
+  z-index:30!important;
+}
+#teamBoardPageV29 .r17bFloorAlert span{
+  font-size:clamp(10px,.78vw,14px)!important;font-weight:950!important;
+  padding:4px 7px!important;border-radius:6px!important;
+  box-shadow:0 2px 5px rgba(15,23,42,.18)!important;
+}
+#teamBoardPageV29 .r17bFloorAlert .iso{background:#fff1f2!important;color:#b91c1c!important}
+#teamBoardPageV29 .r17bFloorAlert .safe{background:#fff7ed!important;color:#9a3412!important}
+#teamBoardPageV29 .r17bFloor.v3IsoFloor .r17bFront{
+  outline:3px solid rgba(220,38,38,.75)!important;outline-offset:-2px!important;
+}
+#teamBoardPageV29 .r17bFloor.v3SafetyFloor .r17bFront{
+  outline:3px solid rgba(234,138,22,.8)!important;outline-offset:-2px!important;
+}
+#teamBoardPageV29 .r17bTeam.v3IsoTeam{
+  box-shadow:0 0 0 3px #dc2626,0 2px 7px rgba(185,28,28,.25)!important;
+}
+#teamBoardPageV29 .r17bTeam.v3SafetyTeam{
+  box-shadow:0 0 0 3px #f59e0b,0 2px 7px rgba(180,83,9,.18)!important;
+}
+#teamBoardPageV29 #cmdAlertBar.r17pAlert{
+  background:rgba(132,18,14,.78)!important;
+}
+</style>
 </body>
 </html>
