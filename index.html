@@ -5857,8 +5857,6 @@ async function loadInsideMembers(isAutoRefresh = false){
 
 
     updateV23Summary(data.members);
-    // SYNC1: 1페이지의 정상 서버조회 결과도 같은 브라우저의 다른 탭에 전달.
-    if(typeof v16XPublishTest4==='function')v16XPublishTest4(window.__dashboardInsideMembers);
 
     const insideInfo=document.getElementById("insideRefreshInfo");
     if(insideInfo){
@@ -6429,14 +6427,18 @@ async function batchExitMembers(){
           !succeededIds.has(String(m.memberId||"").trim())
         );
         window.__insideMembers=window.__dashboardInsideMembers;
-        // SYNC1: 철수 확정 결과를 다른 탭의 1페이지 카드에 즉시 전파.
-        if(typeof v16XPublishTest4==='function')v16XPublishTest4(window.__dashboardInsideMembers);
         if(typeof drawDashboardInside==="function") drawDashboardInside(window.__dashboardInsideMembers);
         if(typeof drawDashboardTeamSummary==="function") drawDashboardTeamSummary(window.__dashboardInsideMembers);
         if(typeof window.v16RRefreshActiveViews==="function") window.v16RRefreshActiveViews();
       }
     }
 
+    /* EXIT-ONLY V1: 철수 저장 성공이 확인된 ID만 기존 채널로 다른 탭에 전달. */
+    if(succeededIds.size && v16XTest4Channel){
+      try{v16XTest4Channel.postMessage({
+        type:'EXIT_CONFIRMED_IDS',siteId:String(siteId()),ids:[...succeededIds],at:Date.now()
+      });}catch(e){console.warn('EXIT-ONLY publish',e);}
+    }
     v249R15ARefreshAfterExit = succeededIds.size > 0;
 
     /* R17D: 철수 성공이 확인된 뒤 철수 QR 카메라 자동 종료 */
@@ -6493,28 +6495,51 @@ try{
     v16XTest4Channel=new BroadcastChannel('r16x-test4-active-members');
     v16XTest4Channel.onmessage=(ev)=>{
       const msg=ev&&ev.data;
+      /* EXIT-ONLY V1: 서버가 철수 확정한 대원 ID만 다른 탭에서 제거.
+         전체 스냅샷 재전송이나 자동조회 추가 없이 기존 채널을 사용한다. */
+      if(msg && msg.type==='EXIT_CONFIRMED_IDS'){
+        if(!msg.siteId || String(msg.siteId)!==String(siteId()))return;
+        const ids=new Set((Array.isArray(msg.ids)?msg.ids:[]).map(x=>String(x||'').trim()).filter(Boolean));
+        if(!ids.size)return;
+        if(Array.isArray(window.__dashboardInsideMembers)){
+          window.__dashboardInsideMembers=window.__dashboardInsideMembers.filter(m=>!ids.has(String(m.memberId||m.id||'').trim()));
+          window.__insideMembers=window.__dashboardInsideMembers;
+        }
+        const list=document.getElementById('insideList');
+        if(list){
+          list.querySelectorAll('input.insideCheck').forEach(ch=>{
+            if(ids.has(String(ch.dataset.id||'').trim())){
+              const row=ch.closest('.memberRow');if(row)row.remove();
+            }
+          });
+          list.querySelectorAll('.teamDividerV19').forEach(div=>{
+            let n=div.nextElementSibling,hasMember=false;
+            while(n && !n.classList?.contains('teamDividerV19')){
+              if(n.classList?.contains('memberRow')){hasMember=true;break;}
+              n=n.nextElementSibling;
+            }
+            if(!hasMember)div.remove();
+          });
+          const count=list.querySelectorAll('input.insideCheck').length;
+          const countEl=document.getElementById('insideCount');
+          if(countEl)countEl.innerText='🔴 현재 현장 내부 '+count+'명';
+          if(typeof updateSelectedCount==='function')updateSelectedCount();
+        }
+        if(typeof drawDashboardInside==='function' && Array.isArray(window.__dashboardInsideMembers)){
+          /* 재발행 루프 방지: 여기서는 원본 카드 렌더 함수를 호출하지 않는다. */
+          const c=document.getElementById('v28ActiveCount');if(c)c.textContent=window.__dashboardInsideMembers.length+'명';
+        }
+        return;
+      }
       if(!msg||msg.type!=='ACTIVE_MEMBERS'||!Array.isArray(msg.members))return;
-      // SYNC1: 다른 현장의 대원정보가 현재 현장에 섞이지 않도록 차단한다.
-      const activeSite=String(document.getElementById('site')?.value||'');
-      if(!activeSite||!msg.siteId||String(msg.siteId)!==activeSite)return;
-      // 로컬 투입/철수 처리 중에는 외부 스냅샷으로 입력 화면을 덮어쓰지 않는다.
-      if(typeof v249R8WriteBusy==='function'&&v249R8WriteBusy())return;
-      if(typeof entrySubmitting!=='undefined'&&entrySubmitting)return;
-      if(typeof exitSubmitting!=='undefined'&&exitSubmitting)return;
-      const remoteAt=Number(msg.at)||0;
-      if(remoteAt && remoteAt<(window.__sync1LastAppliedAt||0))return;
-      window.__sync1LastAppliedAt=remoteAt||Date.now();
       window.__v16XTest4RemoteMembers=msg.members;window.__dashboardInsideMembers=msg.members;window.__insideMembers=window.__dashboardInsideMembers;
-      if(document.getElementById('test4Page')?.style.display==='block')drawTest4Members(msg.members);
-      if(document.getElementById('mainPage')?.style.display!=='none')v16TRenderInsideFromCache();
+      if(document.getElementById('test4Page')?.style.display==='block') drawTest4Members(msg.members);if(document.getElementById('mainPage')?.style.display!=='none')v16TRenderInsideFromCache();
     };
   }
 }catch(e){console.warn('TEST4 channel init',e);}
 function v16XPublishTest4(list){
   if(!v16XTest4Channel||!Array.isArray(list))return;
-  const siteId=String(document.getElementById('site')?.value||'');
-  if(!siteId)return;
-  try{v16XTest4Channel.postMessage({type:'ACTIVE_MEMBERS',siteId:siteId,members:list,at:Date.now()});}catch(e){console.warn('TEST4 publish',e);}
+  try{v16XTest4Channel.postMessage({type:'ACTIVE_MEMBERS',members:list,at:Date.now()});}catch(e){console.warn('TEST4 publish',e);}
 }
 function drawTest4Members(list){
   const area=document.getElementById('test4Inside'); if(!area)return;
