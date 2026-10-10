@@ -11733,9 +11733,10 @@ if ('serviceWorker' in navigator) {
 #teamBoardPageV29.r17pBoard #cmdAlertBar .r17pAlertIcon{font-size:76px!important}
 #teamBoardPageV29.r17pBoard #cmdAlertBar .r17pAlertText b{font-size:58px!important;margin-bottom:14px!important}
 #teamBoardPageV29.r17pBoard #cmdAlertBar .r17pAlertText small{font-size:34px!important}
-/* Floor overview must not reflow when the physical viewport is below 1200px. */
+/* Floor overview must not reflow when the physical viewport is below 1200px.
+   Requested layout: floor selector / expanded team activity / floor diagram. */
 #teamBoardPageV29.r17pBoard.r17pFloorMode .r17pLocationGrid{
-  grid-template-columns:150px 210px minmax(360px,1fr)!important;
+  grid-template-columns:150px 520px minmax(0,1fr)!important;
   grid-template-rows:minmax(0,1fr)!important;
   gap:14px!important;min-width:0!important;
   padding:10px 12px 12px!important;
