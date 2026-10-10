@@ -9363,7 +9363,7 @@ function r17pRenderCurrentTeamPage(){
           escapeAttr(String(m.memberId||m.id||''))+'" data-r17-member-name="'+
           escapeAttr(String(m.memberName||m.name||''))+'">'+v16NMemberCardHtml(cardMember)+'</div>';
       }).join('');
-      return '<div class="r17pTeamRow '+css+'"><div class="r17pTeamHead">'+
+      return '<div class="r17pTeamRow '+css+'" style="flex-grow:'+Math.min(R17P_MAX_ROWS_PER_SCREEN,r17pRowsForTeam(t))+';flex-basis:0"><div class="r17pTeamHead">'+
         '<div class="r17pTeamInfoLine"><span class="r17pTeamName '+css+'">'+E(t.team)+'</span><span class="r17pTeamCount">'+Number(t.count||((t.members||[]).length)||0)+'명</span></div>'+
         '<div class="r17pTeamInfoLine"><span class="r17pLoc">'+E(dir)+'</span><span class="r17pLoc">'+E(floor)+'</span></div>'+
         '<div class="r17pTeamInfoLine"><span class="r17pDetailBanner">세부장소 : '+E(det)+'</span></div></div>'+
