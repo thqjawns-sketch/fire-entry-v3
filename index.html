@@ -11800,5 +11800,70 @@ try{
 }catch(e){console.warn('SYNC-DIAG',e);}
 })();
 </script>
+
+<!-- INSIDE_SYNC_PILOT_V1 -->
+<script>
+/* R17 isolated pilot: opt-in via ?insidesync=1; no change to default production behavior. */
+(function(){
+ 'use strict';
+ const params=new URLSearchParams(location.search);
+ if(params.get('insidesync')!=='1')return;
+ const INTERVAL=5000;
+ let busy=false, stopped=false, generation=0, lastSite='', lastSignature='', lastSuccess=0, timer=null;
+ const log=(...args)=>console.info('[INSIDE_SYNC_PILOT]',...args);
+ function visible(){
+   const main=document.getElementById('mainPage');
+   return !!(main&&main.style.display!=='none'&&!document.hidden);
+ }
+ function canRead(){
+   return visible()&&!busy&&typeof v249R8WriteBusy==='function'&&!v249R8WriteBusy()&&
+     !window.insideLoading&&typeof insideLoading!=='undefined'&&!insideLoading&&
+     !document.querySelector('#dashboardDetailOverlay:not([style*="display: none"])');
+ }
+ function signature(members){
+   return JSON.stringify((members||[]).map(m=>({id:String(m.memberId||''),name:m.memberName||'',team:m.team||'',activityNo:m.activityNo||'',direction:m.direction||'',floor:m.floor||'',detail:m.detail||'',entryTime:m.entryTime||'',isolated:!!m.isolated,safetyCheckedAt:m.safetyCheckedAt||''})).sort((a,b)=>a.id.localeCompare(b.id)));
+ }
+ function syncBadge(){
+   let b=document.getElementById('insideSyncPilotStatus');
+   if(!b){b=document.createElement('div');b.id='insideSyncPilotStatus';b.style.cssText='position:fixed;top:4px;right:4px;z-index:9998;background:#123c5b;color:white;padding:5px 8px;border-radius:7px;font:11px system-ui;pointer-events:none;opacity:.87';document.body.appendChild(b);}
+   return b;
+ }
+ function status(t){syncBadge().textContent='시험 자동반영 · '+t;}
+ async function poll(){
+   if(stopped||!canRead())return;
+   const site=document.getElementById('site')?.value||'';
+   if(!site)return;
+   const epoch=generation;
+   busy=true;
+   try{
+     const data=await v218FetchDashboard(site,true);
+     if(stopped||epoch!==generation||!visible()||v249R8WriteBusy()||insideLoading||(document.getElementById('site')?.value||'')!==site)return;
+     if(!data||!data.success||!data.dashboard||!Array.isArray(data.dashboard.insideMembers)){status('조회 실패');return;}
+     const members=data.dashboard.insideMembers;
+     const sig=signature(members);
+     if(lastSite!==site){
+       lastSite=site;
+       lastSignature=signature(Array.isArray(window.__dashboardInsideMembers)?window.__dashboardInsideMembers:[]);
+     }
+     if(sig!==lastSignature){
+       window.__dashboardInsideMembers=members;
+       window.__insideMembers=members;
+       if(typeof v16TRenderInsideFromCache==='function')v16TRenderInsideFromCache();
+       lastSignature=sig;
+       log('change applied',site,members.length);
+       status('변경 반영 '+new Date().toLocaleTimeString('ko-KR',{hour12:false}));
+     }else{
+       status('정상 '+new Date().toLocaleTimeString('ko-KR',{hour12:false}));
+     }
+     lastSuccess=Date.now();
+   }catch(e){status('통신 지연');console.warn('[INSIDE_SYNC_PILOT]',e);}
+   finally{busy=false;}
+ }
+ function start(){status('준비');timer=setInterval(poll,INTERVAL);setTimeout(poll,700);}
+ document.addEventListener('visibilitychange',()=>{generation++;if(!document.hidden)setTimeout(poll,300);});
+ window.addEventListener('pagehide',()=>{stopped=true;generation++;if(timer)clearInterval(timer);});
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+</script>
 </body>
 </html>
