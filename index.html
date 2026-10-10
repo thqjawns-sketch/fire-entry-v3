@@ -8682,7 +8682,8 @@ window.v251R9OpenTeam=function(team){
       btn.textContent=(mode==='Y')?'✓ 조 고립 해제':'🚨 조 고립 지정';
       if(typeof summary==='function')summary();
       if(typeof refresh==='function')refresh();
-      if(typeof loadDashboard==='function')setTimeout(()=>loadDashboard(false),0);
+      /* ISOLATION_DUP_FETCH_PILOT_V1: confirmed mutation already refreshes views; preserve legacy path outside opt-in test. */
+      if(new URLSearchParams(location.search).get('insidesync')!=='1' && typeof loadDashboard==='function')setTimeout(()=>loadDashboard(false),0);
     }catch(err){
       console.error('조 고립 변경 오류',err);
     }finally{
@@ -8809,7 +8810,8 @@ if(typeof oldDetail==='function'){
           isoBtn.textContent=m.isolated?'✓ 고립대원 해제':'🚨 고립대원 지정';
           if(typeof summary==='function')summary();
           if(typeof refresh==='function')refresh();
-          if(typeof loadDashboard==='function')setTimeout(()=>loadDashboard(false),0);
+          /* ISOLATION_DUP_FETCH_PILOT_V1: confirmed mutation already refreshes views; preserve legacy path outside opt-in test. */
+      if(new URLSearchParams(location.search).get('insidesync')!=='1' && typeof loadDashboard==='function')setTimeout(()=>loadDashboard(false),0);
         }catch(err){
           console.error('개별 고립대원 변경 오류',err);
         }finally{
