@@ -5989,11 +5989,6 @@ async function startExitScanner(){
     alert("화재현장을 선택하세요.");
     return;
   }
-  if(!officer){
-    alert("지휘관 또는 안전점검관 성명을 입력하세요.");
-    return;
-  }
-
   const button=document.getElementById("exitScanButton");
   const info=document.getElementById("exitScanInfo");
 
@@ -6221,19 +6216,6 @@ async function batchExitMembers(){
 
     alert(
       "화재현장을 선택하세요."
-    );
-
-    return;
-
-  }
-
-
-  if(
-    !officer
-  ){
-
-    alert(
-      "지휘관 또는 안전점검관 성명을 입력하세요."
     );
 
     return;
