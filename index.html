@@ -8641,7 +8641,7 @@ window.v251R9OpenTeam=function(team){
       activityNo:Number(i.activityNo||m.activityNo||m.entryCount||1)||1,
       direction:i.direction||m.direction||'',
       floor:i.floor||m.floor||'',
-      detail:i.detail||m.detail||''
+      detail:(m.detail!=null?m.detail:i.detail)||''
     };
   });
   const first=infos.find(x=>x.direction||x.floor||x.detail)||infos[0]||{};
@@ -8682,12 +8682,12 @@ window.v251R9OpenTeam=function(team){
     const dir=document.getElementById('r9Dir').value, floor=document.getElementById('r9Floor').value, detail=document.getElementById('r9Detail').value;
     if(dir)extra.direction=dir;
     if(floor)extra.floor=floor;
-    if(curDetail||detail)extra.detail=detail;
+    extra.detail=detail;
     const d=await post('updateSafetyManagement',ms.map(m=>m.memberId),extra,this);
     if(d)setTimeout(()=>o.classList.remove('show'),300);
   };
 };
-window.v251R9OpenMember=function(id,name){const m=find(id);if(!m)return;const i=info(m),team=i.team||m.team||'',dir=i.direction||m.direction||'',floor=i.floor||m.floor||'',detail=i.detail||m.detail||'',act=Number(i.activityNo||m.activityNo||m.entryCount||1)||1,o=overlay();o.innerHTML='<div class="dashboardDetailSheet"><div class="sheetHeader"><b>🛡️ 대원정보변경</b><button type="button" id="r9MClose" class="sheetClose">×</button></div><div class="sheetMemberTitle">'+esc(getMemberDisplay(id,name||m.memberName||''))+'</div><div class="v251R9State">현재 상태: '+(m.isolated?'🚨 고립대원':'정상')+'</div><div class="locationEditForm"><label>조<input id="r9MTeam" value="'+attr(team)+'"></label><label>진입방면<select id="r9MDir">'+directionOptions(dir||'미지정')+'</select></label><label>활동층</label>'+v3EditFloorHtml('r9MFloor',floor||'미지정')+'<label>세부장소<input id="r9MDetail" value="'+attr(detail)+'" placeholder="예: 기계실 / 1203호 / 계단실"></label></div><button type="button" id="r9MSave" class="sheetSave">대원정보변경 반영</button></div>';o.classList.add('show');v3BindEditFloor(o);document.getElementById('r9MClose').onclick=()=>o.classList.remove('show');document.getElementById('r9MSave').onclick=async function(){const d=await post('updateSafetyManagement',[id],{team:document.getElementById('r9MTeam').value,activityNo:String(act),direction:document.getElementById('r9MDir').value,floor:document.getElementById('r9MFloor').value,detail:document.getElementById('r9MDetail').value},this);if(d)setTimeout(()=>o.classList.remove('show'),300);};};
+window.v251R9OpenMember=function(id,name){const m=find(id);if(!m)return;const i=info(m),team=i.team||m.team||'',dir=i.direction||m.direction||'',floor=i.floor||m.floor||'',detail=(m.detail!=null?m.detail:i.detail)||'',act=Number(i.activityNo||m.activityNo||m.entryCount||1)||1,o=overlay();o.innerHTML='<div class="dashboardDetailSheet"><div class="sheetHeader"><b>🛡️ 대원정보변경</b><button type="button" id="r9MClose" class="sheetClose">×</button></div><div class="sheetMemberTitle">'+esc(getMemberDisplay(id,name||m.memberName||''))+'</div><div class="v251R9State">현재 상태: '+(m.isolated?'🚨 고립대원':'정상')+'</div><div class="locationEditForm"><label>조<input id="r9MTeam" value="'+attr(team)+'"></label><label>진입방면<select id="r9MDir">'+directionOptions(dir||'미지정')+'</select></label><label>활동층</label>'+v3EditFloorHtml('r9MFloor',floor||'미지정')+'<label>세부장소<input id="r9MDetail" value="'+attr(detail)+'" placeholder="예: 기계실 / 1203호 / 계단실"></label></div><button type="button" id="r9MSave" class="sheetSave">대원정보변경 반영</button></div>';o.classList.add('show');v3BindEditFloor(o);document.getElementById('r9MClose').onclick=()=>o.classList.remove('show');document.getElementById('r9MSave').onclick=async function(){const d=await post('updateSafetyManagement',[id],{team:document.getElementById('r9MTeam').value,activityNo:String(act),direction:document.getElementById('r9MDir').value,floor:document.getElementById('r9MFloor').value,detail:document.getElementById('r9MDetail').value},this);if(d)setTimeout(()=>o.classList.remove('show'),300);};};
 const oldTeam=window.openDashboardTeamLocationEdit;window.openDashboardTeamLocationEdit=function(team){v251R9OpenTeam(team);};
 const oldDetail=window.openDashboardMemberDetail;
 function r16mDetailText(v){
