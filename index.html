@@ -9390,6 +9390,10 @@ function r17pRenderCurrentTeamPage(){
       r17pTeamPages=[[]];
       r17pTeamPageIndex=0;
       area.innerHTML='<div class="cmdFloorEmpty">현재 활동 중인 조가 없습니다.</div>';
+      /* V3-EXIT-FLOOR: 마지막 조 철수 시 층별 현황판도 즉시 비운다. */
+      const board=document.getElementById('teamBoardPageV29');
+      if(board&&board.classList.contains('r17pFloorMode'))r17fRenderFloorOnlyBoard();
+      if(typeof r17pUpdatePagerControl==='function')r17pUpdatePagerControl();
       return;
     }
 
