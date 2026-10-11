@@ -9278,8 +9278,12 @@ window.v29UpdateRefreshClock=function(){
     }
     const alert=document.getElementById('cmdAlertBar');
     if(alert){
-      if(!urgent.length){alert.className='r17pAlert';alert.innerHTML='';}
-      else{
+      if(!urgent.length){
+        alert.className='r17pAlert';
+        alert.innerHTML='';
+        window.r17pAlertAcknowledgedKey='';
+        window.r17pAlertSeenKey='';
+      }else{
         const meta=typeof v23LoadMeta==='function'?v23LoadMeta():{};
         const grouped=[];
         urgent.forEach(x=>{
@@ -9290,8 +9294,22 @@ window.v29UpdateRefreshClock=function(){
           g.names.push(v29CleanName(x.m)+(x.st.isolated?' · 고립':''));
         });
         const allNames=grouped.map(g=>g.team+' '+g.names.join(' · '));
-        alert.className='r17pAlert show';
-        alert.innerHTML='<span class="r17pAlertIcon">⚠</span><span class="r17pAlertText"><b>즉시확인 대상 '+urgent.length+'명</b><small>'+allNames.map(E).join('<span class="r17AlertSep">　│　</span>')+'</small></span>';
+        // Acknowledgement only changes this tablet's display; it never changes member safety.
+        // A new member or new isolation state restores the full-size warning.
+        const alertKey=urgent.map(x=>String(x.m.memberId)+':'+(x.st.isolated?'1':'0')).sort().join('|');
+        window.r17pAlertSeenKey=alertKey;
+        const acknowledged=window.r17pAlertAcknowledgedKey===alertKey;
+        alert.className='r17pAlert show'+(acknowledged?' r17pAlertAcknowledged':'');
+        alert.innerHTML='<span class="r17pAlertIcon">⚠</span><span class="r17pAlertText"><b>즉시확인 대상 '+urgent.length+'명</b><small>'+allNames.map(E).join('<span class="r17AlertSep">　│　</span>')+'</small></span>'+
+          (acknowledged?'':'<button type="button" class="r17pAlertAckBtn">경보 확인</button>');
+        if(!acknowledged){
+          const ackButton=alert.querySelector('.r17pAlertAckBtn');
+          if(ackButton)ackButton.onclick=function(){
+            window.r17pAlertAcknowledgedKey=window.r17pAlertSeenKey;
+            alert.classList.add('r17pAlertAcknowledged');
+            this.remove();
+          };
+        }
       }
     }
   };
@@ -9363,10 +9381,22 @@ function r17pRenderCurrentTeamPage(){
           escapeAttr(String(m.memberId||m.id||''))+'" data-r17-member-name="'+
           escapeAttr(String(m.memberName||m.name||''))+'">'+v16NMemberCardHtml(cardMember)+'</div>';
       }).join('');
-      return '<div class="r17pTeamRow '+css+'"><div class="r17pTeamHead">'+
+      // Show every affected member name inside their own team, below the team details.
+      const isolatedNames=[],checkNames=[];
+      (t.members||[]).forEach(m=>{
+        const state=currentState(m);
+        const name=String(m.memberName||m.name||'').trim()||'이름 미상';
+        if(state.isolated)isolatedNames.push(name);
+        else if(state.due)checkNames.push(name);
+      });
+      const safetyBanners=(isolatedNames.length?
+        '<div class="r17pTeamSafetyBanner isolated">고립 '+isolatedNames.length+'명</div>':'')+
+        (checkNames.length?
+        '<div class="r17pTeamSafetyBanner due">안전확인 '+checkNames.length+'명</div>':'');
+      return '<div class="r17pTeamRow '+css+'" style="flex-grow:'+Math.min(R17P_MAX_ROWS_PER_SCREEN,r17pRowsForTeam(t))+';flex-basis:0"><div class="r17pTeamHead">'+
         '<div class="r17pTeamInfoLine"><span class="r17pTeamName '+css+'">'+E(t.team)+'</span><span class="r17pTeamCount">'+Number(t.count||((t.members||[]).length)||0)+'명</span></div>'+
         '<div class="r17pTeamInfoLine"><span class="r17pLoc">'+E(dir)+'</span><span class="r17pLoc">'+E(floor)+'</span></div>'+
-        '<div class="r17pTeamInfoLine"><span class="r17pDetailBanner">세부장소 : '+E(det)+'</span></div></div>'+
+        '<div class="r17pTeamInfoLine"><span class="r17pDetailBanner">세부장소 : '+E(det)+'</span></div>'+safetyBanners+'</div>'+
         '<div class="r17pMembers">'+cards+'</div></div>';
     }).join('');
     fitBoard();
@@ -9665,7 +9695,11 @@ function r17pRenderCurrentTeamPage(){
         const detText=detail(t.detail);
         const showDetail=(!detText||detText==='미지정'||/세부\s*장소\s*미지정/i.test(detText))?'-':detText;
         const cnt=(t.members||[]).length;
-        return '<span class="r17bTeam '+v29TeamCss(t.team)+'"><span class="r17bTeamMain"><b>'+E(t.team)+'</b><small>'+cnt+'명</small></span>'+(showDetail!=='-'?'<em>'+E(showDetail)+'</em>':'')+'</span>';
+        const isolatedCount=(t.members||[]).filter(isolatedOf).length;
+        const safetyCount=(t.members||[]).filter(m=>safetyDueOf(m)&&!isolatedOf(m)).length;
+        const warnings=(isolatedCount?'<span class="r17bTeamAlert iso">고립 '+isolatedCount+'명</span>':'')+
+          (safetyCount?'<span class="r17bTeamAlert safe">안전확인 '+safetyCount+'명</span>':'');
+        return '<span class="r17bTeam '+v29TeamCss(t.team)+'"><span class="r17bTeamMain"><b>'+E(t.team)+'</b><small>'+cnt+'명</small></span>'+(showDetail!=='-'?'<em>'+E(showDetail)+'</em>':'')+warnings+'</span>';
       }).join('');
 
       const floorMembers=here.flatMap(t=>t.members||[]);
@@ -11671,47 +11705,8 @@ function r17pRenderCurrentTeamPage(){
 .v325RecentDetailButtons{display:flex;gap:6px;flex-wrap:wrap}
 .v325RecentDetailBtn{width:auto!important;margin:0!important;padding:7px 10px!important;border:1px solid #b8c7d8!important;border-radius:9px!important;background:#f4f8fc!important;color:#173d67!important;font-size:13px!important;font-weight:900!important}
 
-/* 휴대폰/태블릿 세로: 3페이지 원본 가로폭은 유지하고 페이지 안에서 좌우 스와이프 */
-@media (max-width:1180px){
-  #teamBoardPageV29{
-    width:100vw!important;
-    min-width:0!important;
-    max-width:100vw!important;
-    margin-left:calc(50% - 50vw)!important;
-    margin-right:0!important;
-    padding-left:0!important;
-    padding-right:0!important;
-    overflow-x:auto!important;
-    overflow-y:visible!important;
-    -webkit-overflow-scrolling:touch;
-    overscroll-behavior-x:contain;
-    touch-action:pan-x pan-y!important;
-  }
-  #teamBoardPageV29 > *{
-    width:1440px!important;
-    min-width:1440px!important;
-    max-width:1440px!important;
-    box-sizing:border-box!important;
-  }
-}
+/* Legacy 1440px mobile pan removed: page 3 uses one stage viewport. */
 </style>
-
-<style id="v3-18-tablet-horizontal-pan">
-/* 태블릿: 모니터용 정보/크기를 유지하고 화면 자체를 좌우로 이동 */
-@media (max-width:1180px){
-  html,body{
-    overflow-x:auto!important;
-    overscroll-behavior-x:contain;
-    -webkit-overflow-scrolling:touch;
-  }
-  /* V3-25: 실제 좌우 스크롤은 위의 page3 전용 스크롤 컨테이너가 담당 */
-  #teamBoardPageV29,
-  #teamBoardPageV29 *{
-    touch-action:pan-x pan-y;
-  }
-}
-</style>
-
 
 <script id="v3-21-pwa-register">
 if ('serviceWorker' in navigator) {
@@ -11731,47 +11726,218 @@ if ('serviceWorker' in navigator) {
 
 
 <!-- V3-31: 휴대폰/태블릿 세로 3페이지 좌우 이동 복구 -->
-<style id="v3-31-page3-mobile-horizontal-pan-fix">
-@media (max-width:1180px){
-  #teamBoardPageV29.r17pBoard{
-    overflow-x:auto!important;
-    overflow-y:hidden!important;
-    -webkit-overflow-scrolling:touch!important;
-    overscroll-behavior-x:contain!important;
-    touch-action:pan-x pan-y!important;
-    scrollbar-width:auto;
-  }
-  #teamBoardPageV29.r17pBoard > .r17pHeader,
-  #teamBoardPageV29.r17pBoard > .r17pMain{
-    width:1440px!important;
-    min-width:1440px!important;
-    max-width:none!important;
-  }
+<!-- V3 PAGE3 FIXED STAGE (work branch only) -->
+<style id="v3-page3-fixed-stage-1920">
+#teamBoardPageV29.r17pBoard{
+  position:fixed!important;inset:auto!important;
+  left:var(--p3-left,0px)!important;top:var(--p3-top,0px)!important;
+  width:1920px!important;min-width:1920px!important;max-width:1920px!important;
+  height:1080px!important;min-height:1080px!important;max-height:1080px!important;
+  margin:0!important;padding:0!important;overflow:hidden!important;
+  transform-origin:top left!important;transform:scale(var(--p3-scale,1))!important;
+  touch-action:manipulation!important;
+}
+#teamBoardPageV29.r17pBoard>.r17pHeader{height:99px!important;min-height:99px!important;max-height:99px!important}
+#teamBoardPageV29.r17pBoard>.r17pMain{height:981px!important;min-height:981px!important;max-height:981px!important}
+/* Freeze key stage dimensions at 1920x1080 design pixels. */
+#teamBoardPageV29.r17pBoard .r17pMain{height:981px!important;grid-template-rows:189px minmax(0,1fr)!important;gap:8px!important;padding:8px 22px 10px!important}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pMain{grid-template-rows:189px 56px minmax(0,1fr)!important}
+#teamBoardPageV29.r17pBoard .r17pSectionTitle{height:46px!important}
+#teamBoardPageV29.r17pBoard .r17pPeopleStats{height:calc(100% - 46px)!important}
+#teamBoardPageV29.r17pBoard .r17pTeamSection{grid-template-rows:56px minmax(0,1fr)!important}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pTeamSection{grid-template-rows:56px!important}
+#teamBoardPageV29.r17pBoard .r17pTeamTop{height:56px!important}
+#teamBoardPageV29.r17pBoard .r17pLocationSection{grid-template-rows:56px minmax(0,1fr)!important}
+/* Keep important typography and spacing independent of the device viewport. */
+#teamBoardPageV29.r17pBoard .r17pHeader{grid-template-columns:minmax(0,1.35fr) minmax(310px,.8fr) minmax(330px,1fr)!important;gap:19px!important;padding:8px 26px!important}
+#teamBoardPageV29.r17pBoard .r17pTitle{font-size:32px!important}
+#teamBoardPageV29.r17pBoard .r17pSite{font-size:17px!important;margin-top:5px!important}
+#teamBoardPageV29.r17pBoard .r17pStation{height:78px!important;min-height:78px!important;max-height:78px!important}
+#teamBoardPageV29.r17pBoard .r17pStation img{width:81px!important}
+#teamBoardPageV29.r17pBoard .r17pStation .stationNameDynamic{font-size:32px!important}
+#teamBoardPageV29.r17pBoard .r17pHeadActions{gap:12px!important}
+#teamBoardPageV29.r17pBoard .r17pRefresh,#teamBoardPageV29.r17pBoard .r17pBack{height:64px!important;min-height:64px!important;max-height:64px!important}
+#teamBoardPageV29.r17pBoard .r17pRefresh{width:175px!important}
+#teamBoardPageV29.r17pBoard .r17pBack{padding:0 19px!important;font-size:16px!important}
+#teamBoardPageV29.r17pBoard .r17pSectionTitle{font-size:22px!important;padding:5px 13px!important}
+#teamBoardPageV29.r17pBoard .r17pStatLabel{font-size:16px!important}
+#teamBoardPageV29.r17pBoard .r17pStatValue{font-size:40px!important;margin-top:5px!important}
+#teamBoardPageV29.r17pBoard .r17pTeamTable{gap:5px!important;padding:5px 11px 6px!important}
+#teamBoardPageV29.r17pBoard .r17pTeamRow{grid-template-columns:270px minmax(0,1fr)!important;gap:9px!important;padding:4px 7px!important}
+#teamBoardPageV29.r17pBoard #cmdAlertBar .r17pAlertIcon{font-size:76px!important}
+#teamBoardPageV29.r17pBoard #cmdAlertBar .r17pAlertText b{font-size:58px!important;margin-bottom:14px!important}
+#teamBoardPageV29.r17pBoard #cmdAlertBar .r17pAlertText small{font-size:34px!important}
+/* Floor overview must not reflow when the physical viewport is below 1200px.
+   Requested layout: floor selector / expanded team activity / floor diagram. */
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pLocationGrid{
+  grid-template-columns:150px 520px minmax(0,1fr)!important;
+  grid-template-rows:minmax(0,1fr)!important;
+  gap:14px!important;min-width:0!important;
+  padding:10px 12px 12px!important;
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pFloorPanel{grid-column:1!important}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pPlanPanel{grid-column:2!important}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pFloorSummary{grid-column:3!important}
+/* Keep the four-card grid and card padding at fixed monitor design units. */
+#teamBoardPageV29.r17pBoard .r17pTeamRow .r17pMembers{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important}
+#teamBoardPageV29.r17pBoard .r17pTeamHead{padding:3px 9px!important}
+#teamBoardPageV29.r17pBoard .r17pTeamName{font-size:19px!important;padding:5px 11px!important}
+#teamBoardPageV29.r17pBoard .r17pLoc{font-size:12px!important;padding:3px 7px!important}
+#teamBoardPageV29.r17pBoard .r17pDetailBanner{font-size:19px!important;padding:4px 10px!important}
+#teamBoardPageV29.r17pBoard .r17pMemberSlot .v16PCommonMemberCard{padding:4px 9px!important;gap:3px!important}
+/* Floor-board columns aligned to the seven equal-width people summary tiles:
+   floor selector = 1 tile; activity details = 2 tiles; diagram = remaining 4 tiles.
+   The summary tiles occupy the same inner 1920px stage content width. */
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pLocationGrid{
+  grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,4fr)!important;
+  gap:0!important;
+  min-width:0!important;
+  padding:0!important;
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pFloorPanel,
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pPlanPanel,
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17pFloorSummary{
+  min-width:0!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+}
+/* Alert must be positioned in the scaled stage, not fixed to the viewport. */
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlert{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;width:1650px!important;max-height:518px!important;padding:24px 46px!important}
+
+/* Page 3 alert acknowledgement: keep original full-size warning untouched. */
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlert.show{pointer-events:auto!important}
+#teamBoardPageV29.r17pBoard #cmdAlertBar .r17pAlertAckBtn{
+  position:absolute;right:18px;bottom:10px;border:1px solid rgba(255,255,255,.75);
+  background:rgba(255,255,255,.96);color:#871b16;border-radius:10px;
+  padding:9px 17px;font-size:22px;font-weight:900;cursor:pointer;z-index:1
+}
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlertAcknowledged{
+  left:50%!important;top:112px!important;transform:translateX(-50%)!important;
+  width:900px!important;min-height:0!important;height:auto!important;
+  max-height:80px!important;padding:10px 24px!important;gap:12px!important;
+  animation:none!important;overflow:hidden!important
+}
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlertAcknowledged .r17pAlertIcon{font-size:30px!important}
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlertAcknowledged .r17pAlertText b{
+  font-size:28px!important;margin:0!important
+}
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlertAcknowledged .r17pAlertText small{display:none!important}
+/* Page 3: full affected-member names, directly under their own team details. */
+#teamBoardPageV29.r17pBoard .r17pTeamHead{overflow:hidden!important}
+#teamBoardPageV29.r17pBoard .r17pTeamSafetyBanner{
+ display:block;width:100%;box-sizing:border-box;white-space:normal;
+ overflow-wrap:anywhere;line-height:1.15;font-size:21px;font-weight:950;
+ border-radius:6px;padding:3px 6px;margin-top:3px;text-align:left;
+}
+#teamBoardPageV29.r17pBoard .r17pTeamSafetyBanner.isolated{
+ background:#b91c1c;color:#fff;border:1px solid #7f1d1d
+}
+#teamBoardPageV29.r17pBoard .r17pTeamSafetyBanner.due{
+ background:#ffb74d;color:#542500;border:1px solid #d97706
+}
+/* Confirmed page-3 refinements: full alert names, team counts, wider building. */
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlert.show:not(.r17pAlertAcknowledged){
+  max-height:760px!important;height:auto!important;min-height:145px!important;
+  overflow:visible!important;flex-wrap:wrap!important;align-content:center!important;
+  padding:26px 46px 84px!important
+}
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlert.show:not(.r17pAlertAcknowledged) .r17pAlertText{
+  flex:1 1 0!important;max-width:calc(100% - 110px)!important;
+  min-width:0!important;overflow:visible!important
+}
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlert.show:not(.r17pAlertAcknowledged) .r17pAlertText small{
+  display:block!important;white-space:normal!important;overflow:visible!important;
+  text-overflow:clip!important;overflow-wrap:anywhere!important;word-break:keep-all!important;
+  font-size:51px!important;line-height:1.24!important;max-height:560px!important;
+  overflow-y:auto!important
+}
+#teamBoardPageV29.r17pBoard #cmdAlertBar.r17pAlert.show:not(.r17pAlertAcknowledged) .r17pAlertAckBtn{
+  right:50%!important;bottom:14px!important;transform:translateX(50%)!important;
+  font-size:23px!important
+}
+/* Use the full available horizontal span of the existing right-hand floor board. */
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bViewport{
+  padding:8px 8px 14px 8px!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bBuilding{
+  width:98%!important;max-width:none!important;
+  height:min(90%,650px)!important;aspect-ratio:auto!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bFloor{
+  left:12%!important;width:86%!important;
+  top:calc(2% + var(--fi) * (96% / var(--slots)))!important;
+  height:calc(92% / var(--slots))!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamRows{
+  width:84%!important;max-height:85%!important
+}
+/* Floor diagram: per-team alerts stay inside their own team badge. */
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeam{
+ height:auto!important;min-height:25px!important;max-width:100%!important;
+ display:inline-flex!important;flex-wrap:wrap!important;gap:3px 6px!important;
+ padding:4px 7px!important;box-sizing:border-box!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert{
+ display:inline-flex!important;align-items:center!important;white-space:nowrap!important;
+ padding:3px 6px!important;border-radius:5px!important;
+ font-size:19px!important;line-height:1.1!important;font-weight:950!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.iso{
+ background:#b91c1c!important;color:#fff!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.safe{
+ background:#f59e0b!important;color:#422006!important
+}
+/* Fit complete 3D geometry inside the right panel, including its rear/right edges. */
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bBuilding{
+ left:50%!important;width:91%!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bFloor{
+ left:12%!important;width:78%!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamRows{
+ left:4%!important;width:88%!important;max-height:90%!important
+}
+/* Floor diagram only: centered teams, gentle safety pulses. */
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamRows{
+  left:50%!important;top:99%!important;width:88%!important;
+  transform:translate(-50%,-100%)!important;
+  justify-content:center!important;align-items:flex-end!important;
+  align-content:flex-end!important;flex-wrap:wrap!important;
+  max-height:90%!important
+}
+/* Match the existing dangerBlink card cadence: alternating strong/white warning.
+   Only the warning chips blink; the team identity stays stable. */
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.iso{
+  animation:r17bIsolationCardBlink 1s steps(1,end) infinite!important
+}
+#teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.safe{
+  animation:r17bSafetyCardBlink 1s steps(1,end) infinite!important
+}
+@keyframes r17bIsolationCardBlink{
+  0%,100%{opacity:1;filter:none;box-shadow:inset 0 0 0 2px #7f1d1d,0 0 0 2px rgba(185,28,28,.3)}
+  50%{opacity:.45;filter:brightness(1.6);box-shadow:inset 0 0 0 2px #fff,0 0 0 2px rgba(185,28,28,.1)}
+}
+@keyframes r17bSafetyCardBlink{
+  0%,100%{opacity:1;filter:none;box-shadow:inset 0 0 0 2px #b45309,0 0 0 2px rgba(245,158,11,.3)}
+  50%{opacity:.45;filter:brightness(1.65);box-shadow:inset 0 0 0 2px #fff,0 0 0 2px rgba(245,158,11,.1)}
+}
+@media(prefers-reduced-motion:reduce){
+  #teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.iso,
+  #teamBoardPageV29.r17pBoard.r17pFloorMode .r17bTeamAlert.safe{animation:none!important}
 }
 </style>
-<script id="v3-31-page3-mobile-horizontal-pan-fix-js">
+<script id="v3-page3-fixed-stage-1920-js">
 (function(){
-  const root=document.getElementById('teamBoardPageV29');
-  if(!root || root.dataset.v331Pan==='1') return;
-  root.dataset.v331Pan='1';
-  let sx=0, sy=0, sl=0, active=false, horizontal=false;
-  root.addEventListener('touchstart',function(e){
-    if(!e.touches || e.touches.length!==1) return;
-    const t=e.touches[0];
-    sx=t.clientX; sy=t.clientY; sl=root.scrollLeft; active=true; horizontal=false;
-  },{passive:true});
-  root.addEventListener('touchmove',function(e){
-    if(!active || !e.touches || e.touches.length!==1) return;
-    const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy;
-    if(!horizontal && Math.abs(dx)>8 && Math.abs(dx)>Math.abs(dy)) horizontal=true;
-    if(horizontal){
-      root.scrollLeft=sl-dx;
-      if(e.cancelable) e.preventDefault();
-    }
-  },{passive:false});
-  const end=function(){active=false;horizontal=false;};
-  root.addEventListener('touchend',end,{passive:true});
-  root.addEventListener('touchcancel',end,{passive:true});
+  const board=document.getElementById('teamBoardPageV29');if(!board)return;
+  function fit(){
+    const w=window.innerWidth,h=window.innerHeight;
+    const k=Math.min(w/1920,h/1080);
+    board.style.setProperty('--p3-scale',String(k));
+    board.style.setProperty('--p3-left',Math.max(0,(w-1920*k)/2)+'px');
+    board.style.setProperty('--p3-top',Math.max(0,(h-1080*k)/2)+'px');
+  }
+  window.addEventListener('resize',fit,{passive:true});fit();
 })();
 </script>
 

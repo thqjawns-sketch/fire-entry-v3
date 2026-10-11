@@ -1,0 +1,32 @@
+/* Page 3 monitor baseline — EXPERIMENTAL / NOT LINKED.
+   The real page still uses viewport units (vw/dvh), so this stylesheet
+   alone is NOT sufficient to freeze every inner measurement. */
+#teamBoardPageV29.r17pBoard{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  max-width:none!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
+#teamBoardPageV29.r17pBoard>.r17pHeader,
+#teamBoardPageV29.r17pBoard>.r17pMain{
+  position:absolute!important;
+  left:var(--page3-fixed-left,0px)!important;
+  width:1920px!important;
+  min-width:1920px!important;
+  max-width:1920px!important;
+  transform-origin:top left!important;
+  transform:scale(var(--page3-fixed-scale,1))!important;
+  box-sizing:border-box!important;
+}
+#teamBoardPageV29.r17pBoard>.r17pHeader{
+  top:var(--page3-fixed-top,0px)!important;
+  height:99.36px!important;
+}
+#teamBoardPageV29.r17pBoard>.r17pMain{
+  top:calc(var(--page3-fixed-top,0px) + 99.36px * var(--page3-fixed-scale,1))!important;
+  height:980.64px!important;
+}
+/* Existing 1440px pan handlers must be removed before enabling this CSS. */
