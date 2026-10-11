@@ -9702,15 +9702,7 @@ function r17pRenderCurrentTeamPage(){
         return '<span class="r17bTeam '+v29TeamCss(t.team)+'"><span class="r17bTeamMain"><b>'+E(t.team)+'</b><small>'+cnt+'명</small></span>'+(showDetail!=='-'?'<em>'+E(showDetail)+'</em>':'')+warnings+'</span>';
       }).join('');
 
-      const floorMembers=here.flatMap(t=>t.members||[]);
-      const isolated=floorMembers.filter(isolatedOf);
-      const safety=floorMembers.filter(safetyDueOf);
-      const alertHtml=(isolated.length||safety.length)
-        ? '<div class="r17bFloorAlert">'+
-            (isolated.length?'<span class="iso">🚨 고립 '+isolated.length+'</span>':'')+
-            (safety.length?'<span class="safe">⚠ 안전확인 '+safety.length+'</span>':'')+
-          '</div>'
-        : '';
+      const alertHtml='';
       const tacticalHtml=tactical
         ? '<div class="r17bTacticalLabel '+(tactical==='화점층'?'fire':'')+'">'+(tactical==='화점층'?'🔥 ':'')+E(tactical)+'</div>'
         : '<div class="r17bTacticalLabel empty">-</div>';
