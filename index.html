@@ -9633,7 +9633,9 @@ function r17pRenderCurrentTeamPage(){
         const cardDir=locationValue('direction',t.direction);
         const cardFloor=locationValue('floor',t.floor);
         const cardDetail=locationValue('detail',t.detail);
-        const people=members.map(m=>'<span class="r17fMemberBig"><small>'+E(orgOf(m))+'</small><b>'+E(nameOf(m)||'-')+'</b></span>');
+        const shownLoc=v=>{const x=String(v==null?'':v).trim();return (!x||/^(미지정|미입력|없음|null|undefined)$/i.test(x))?'-':x;};
+        const cardTactical=shownLoc(v3TacticalForFloor(r17fPhysicalFloorKey(t.floor)||t.floor));
+        const people=members.map(m=>'<span class="r17fMemberBig"><small>'+E(orgOf(m))+'</small><b>'+E(nameOf(m)||'-')+'</b></span>').join('<span class="r17fMemberDivider" aria-hidden="true">│</span>');
         const entryTimes=members.map(entryTextOf).filter(x=>x&&x!=='-');
         const entryText=entryTimes.length ? entryTimes[0] : '-';
         const floorKey=r17fPhysicalFloorKey(t.floor)||String(t.floor||'미지정').trim()||'미지정';
@@ -9647,11 +9649,11 @@ function r17pRenderCurrentTeamPage(){
         return '<div class="r17fActivityTeamCard">'+
           '<div class="r17fActivityTeamTop r17fCompactTeamTop">'+
             '<span class="r17fTeamBadge r17fBigTeamBadge '+v29TeamCss(t.team)+'">'+E(t.team)+'</span>'+
-            '<div class="r17fCompactLocations"><span>'+E(cardDir)+'</span><span>'+E(cardFloor)+'</span><span>'+E(cardDetail)+'</span></div>'+
+            '<div class="r17fCompactLocations"><span>'+E(shownLoc(cardDir))+'</span><span>'+E(shownLoc(cardFloor))+'</span><span>'+E(shownLoc(cardDetail))+'</span><span>'+E(cardTactical)+'</span></div>'+
             '<strong>'+cnt+'명</strong>'+
           '</div>'+
-          (people.length?'<div class="r17fActivityPeople r17fBigMembers">'+people.join('')+'</div>':'')+
-          '<div class="r17fActivityTime">진입 : '+E(entryText)+' <span>·</span> 체류 : '+maxMin+'분</div>'+
+          (people.length?'<div class="r17fActivityPeople r17fBigMembers">'+people+'</div>':'')+
+          '<div class="r17fCompactBottom"><div class="r17fActivityTime">진입 : '+E(entryText)+' <span>·</span> 체류 : '+maxMin+'분</div>'+
           '<div class="r17fWarnings">'+
             '<div class="r17fWarnIsolation '+(safety.isolated.length?'active':'zero')+'">🚨 고립 '+safety.isolated.length+'명'+
               (safety.isolated.length?' · '+safety.isolated.map(nameOf).filter(Boolean).map(E).join(' · '):'')+
@@ -9659,7 +9661,7 @@ function r17pRenderCurrentTeamPage(){
             '<div class="r17fWarnSafety '+(safety.safety.length?'active':'zero')+'">⚠ 안전확인 '+safety.safety.length+'명'+
               (safety.safety.length?' · '+safety.safety.map(nameOf).filter(Boolean).map(E).join(' · '):'')+
             '</div>'+
-          '</div>'+
+          '</div></div>'+
         '</div>';
       }).join('')+'</div>';
     }else{
@@ -10859,6 +10861,19 @@ function r17pRenderCurrentTeamPage(){
 #teamBoardPageV29 .r17fMemberBig b{font-size:clamp(20px,1.55vw,28px);font-weight:950;color:#173d67}
 
 
+
+
+/* V3 2026-10-12: 중앙 조별 카드 내부 표시만 수정 */
+#teamBoardPageV29 .r17fActivityTeamCard{padding:6px 8px}
+#teamBoardPageV29 .r17fCompactLocations{background:transparent;padding:0;gap:5px;justify-content:stretch}
+#teamBoardPageV29 .r17fCompactLocations span{display:flex;flex:1 1 0;align-items:center;justify-content:center;min-width:0;min-height:32px;padding:3px 5px!important;border:0!important;border-radius:6px;background:#f0f1f3;font-size:clamp(12px,1vw,17px);font-weight:950;text-align:center}
+#teamBoardPageV29 .r17fCompactTeamTop>strong{font-size:clamp(15px,1.1vw,20px)}
+#teamBoardPageV29 .r17fBigMembers{gap:5px 9px;margin:4px 0 3px;line-height:1.15}
+#teamBoardPageV29 .r17fMemberDivider{font-size:18px;color:#64748b;align-self:center}
+#teamBoardPageV29 .r17fCompactBottom{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;min-width:0}
+#teamBoardPageV29 .r17fCompactBottom .r17fActivityTime{margin:0;white-space:nowrap}
+#teamBoardPageV29 .r17fCompactBottom .r17fWarnings{display:flex;flex-wrap:wrap;align-items:center;gap:4px 9px;margin:0;padding:0;border:0}
+#teamBoardPageV29 .r17fCompactBottom .r17fWarnings>div{margin:0}
 
 /* ===== 17차: R16M 원본 V2.33 3분할 비율 복원 =====
    원본: 150px + 가변 + 210px
